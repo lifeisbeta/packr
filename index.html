@@ -366,6 +366,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
     <div class="loadout-bar">
       <div id="loadout-name-display" class="loadout-name" onclick="editLoadoutName()">Untitled Loadout</div>
       <input id="loadout-name-input" class="loadout-name-input" style="display:none" placeholder="Loadout name…" onblur="saveLoadoutName()" onkeydown="if(event.key==='Enter')saveLoadoutName()"/>
+      <button class="ghost-btn" onclick="shareBPLoadout(this)" style="font-size:12px;padding:6px 12px">Share</button>
       <button class="ghost-btn" onclick="saveAsTemplate()" style="font-size:12px;padding:6px 12px">Save template</button>
       <button class="ghost-btn" onclick="resetLoadout()" style="font-size:12px;padding:6px 12px">Reset</button>
     </div>
@@ -1034,13 +1035,13 @@ function ozToLb(oz){return (oz/16).toFixed(2);}
 function renderBPLoadout(){
   const cats=CAT_ORDER.filter(c=>gearInventory.some(g=>g.cat===c));
   let plOz=0,pkOz=0,plCt=0,pkCt=0;
-  gearInventory.forEach(g=>{const s=loadout[g.id];if(s&&(s.planned||s.packed)){plOz+=g.weight*(g.qty||1);plCt++;}if(s&&s.packed){pkOz+=g.weight*(g.qty||1);pkCt++;}});
+  gearInventory.forEach(g=>{const s=loadout[g.id];const eq=(s?.qty??g.qty??1);if(s&&(s.planned||s.packed)){plOz+=g.weight*eq;plCt++;}if(s&&s.packed){pkOz+=g.weight*eq;pkCt++;}});
   document.getElementById('wp-planned').textContent=ozToLb(plOz)+' lb';document.getElementById('wp-planned-sub').textContent=plCt+' item'+(plCt!==1?'s':'')+' selected';
   document.getElementById('wp-packed').textContent=ozToLb(pkOz)+' lb';document.getElementById('wp-packed-sub').textContent=pkCt+' item'+(pkCt!==1?'s':'')+' packed';
   const body=document.getElementById('bp-loadout-body');body.innerHTML='';
   cats.forEach(cat=>{
     const ci=gearInventory.filter(g=>g.cat===cat);let cPlOz=0,cPkOz=0,cPl=0,cPk=0;
-    ci.forEach(g=>{const s=loadout[g.id];if(s&&(s.planned||s.packed)){cPlOz+=g.weight*(g.qty||1);cPl++;}if(s&&s.packed){cPkOz+=g.weight*(g.qty||1);cPk++;}});
+    ci.forEach(g=>{const s=loadout[g.id];const eq=(s?.qty??g.qty??1);if(s&&(s.planned||s.packed)){cPlOz+=g.weight*eq;cPl++;}if(s&&s.packed){cPkOz+=g.weight*eq;cPk++;}});
     const sh=document.createElement('div');sh.className='gear-sec-head';
     sh.innerHTML=`<span class="gear-sec-name">${cat}</span><div class="gear-sec-stats"><span>${cPl} · ${ozToLb(cPlOz)} lb</span><span style="color:rgba(45,122,58,0.8)">${cPk} packed · ${ozToLb(cPkOz)} lb</span></div>`;
     body.appendChild(sh);
@@ -1050,17 +1051,46 @@ function renderBPLoadout(){
       const checks=document.createElement('div');checks.className='gear-checks';
       const pCk=document.createElement('div');pCk.className='gear-check'+(s.planned||s.packed?' planned':'');pCk.title='Plan';
       const pc=document.createElement('canvas');pc.style.width='10px';pc.style.height='10px';if(s.planned||s.packed)drawCheck(pc,'full');pCk.appendChild(pc);
-      pCk.addEventListener('click',e=>{e.stopPropagation();if(!loadout[gi.id])loadout[gi.id]={planned:false,packed:false};loadout[gi.id].planned=!loadout[gi.id].planned;if(!loadout[gi.id].planned)loadout[gi.id].packed=false;renderBPLoadout();});
+      pCk.addEventListener('click',e=>{e.stopPropagation();if(!loadout[gi.id])loadout[gi.id]={planned:false,packed:false,qty:gi.qty||1};loadout[gi.id].planned=!loadout[gi.id].planned;if(!loadout[gi.id].planned)loadout[gi.id].packed=false;renderBPLoadout();});
       const aCk=document.createElement('div');aCk.className='gear-check'+(s.packed?' packed':'');aCk.title='Packed';
       const ac=document.createElement('canvas');ac.style.width='10px';ac.style.height='10px';if(s.packed)drawCheck(ac,'full');aCk.appendChild(ac);
-      aCk.addEventListener('click',e=>{e.stopPropagation();if(!loadout[gi.id])loadout[gi.id]={planned:false,packed:false};if(!loadout[gi.id].planned&&!loadout[gi.id].packed){loadout[gi.id].planned=true;loadout[gi.id].packed=true;}else{loadout[gi.id].packed=!loadout[gi.id].packed;if(loadout[gi.id].packed)loadout[gi.id].planned=true;}renderBPLoadout();});
+      aCk.addEventListener('click',e=>{e.stopPropagation();if(!loadout[gi.id])loadout[gi.id]={planned:false,packed:false,qty:gi.qty||1};if(!loadout[gi.id].planned&&!loadout[gi.id].packed){loadout[gi.id].planned=true;loadout[gi.id].packed=true;}else{loadout[gi.id].packed=!loadout[gi.id].packed;if(loadout[gi.id].packed)loadout[gi.id].planned=true;}renderBPLoadout();});
       checks.appendChild(pCk);checks.appendChild(aCk);row.appendChild(checks);
       const nm=document.createElement('span');nm.className='gear-name'+(s.packed?' is-packed':'');nm.textContent=gi.name;row.appendChild(nm);
-      if(gi.qty&&gi.qty>1){const q=document.createElement('span');q.className='gear-weight';q.textContent='×'+gi.qty;row.appendChild(q);}
-      const wt=document.createElement('span');wt.className='gear-weight';wt.textContent=gi.weight>0?gi.weight+' oz':'';row.appendChild(wt);
+      // Qty stepper — only shown when item is planned/packed
+      if(s.planned||s.packed){
+        const effQty=s.qty??gi.qty??1;
+        const qw=document.createElement('div');qw.style.cssText='display:flex;align-items:center;gap:3px;flex-shrink:0';
+        const mkQBtn=(lbl,delta)=>{const b=document.createElement('button');b.textContent=lbl;b.style.cssText='width:20px;height:20px;border-radius:4px;border:0.5px solid var(--color-border-secondary);background:none;cursor:pointer;font-size:13px;line-height:1;color:var(--color-text-secondary);font-family:var(--font-sans);padding:0;display:flex;align-items:center;justify-content:center';b.addEventListener('click',e=>{e.stopPropagation();if(!loadout[gi.id])loadout[gi.id]={planned:true,packed:false,qty:gi.qty||1};const cur=loadout[gi.id].qty??gi.qty??1;const nv=Math.max(1,cur+delta);loadout[gi.id].qty=nv;renderBPLoadout();});return b;};
+        const qd=document.createElement('span');qd.style.cssText='font-size:13px;font-weight:500;color:var(--color-text-primary);min-width:18px;text-align:center';qd.textContent=effQty;
+        qw.appendChild(mkQBtn('−',-1));qw.appendChild(qd);qw.appendChild(mkQBtn('+',1));
+        row.appendChild(qw);
+      }
+      const wt=document.createElement('span');wt.className='gear-weight';wt.textContent=gi.weight>0?(s.planned||s.packed?(s.qty??gi.qty??1)*gi.weight+' oz':gi.weight+' oz'):'';row.appendChild(wt);
       body.appendChild(row);
     });
   });
+}
+
+async function shareBPLoadout(btn) {
+  if (btn) { btn.textContent='Saving…'; btn.disabled=true; }
+  const shareData = {
+    mode: 'backpacking',
+    savedDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+    loadoutName: loadoutName,
+    gear: gearInventory.map(g=>({id:g.id,name:g.name,cat:g.cat,weight:g.weight,qty:g.qty})),
+    loadout: JSON.parse(JSON.stringify(loadout))
+  };
+  const id = uid();
+  const {error} = await db.from('trips').upsert({id, name: loadoutName, data: shareData});
+  if (error) { if(btn){btn.textContent='Share';btn.disabled=false;} showSync('error','Share failed'); return; }
+  const url = window.location.origin + window.location.pathname + '?share=' + id;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(()=>{if(btn){btn.textContent='✓ Copied!';setTimeout(()=>{btn.textContent='Share';btn.disabled=false;},2000);}});
+  } else {
+    prompt('Copy this link to share your loadout:', url);
+    if(btn){btn.textContent='Share';btn.disabled=false;}
+  }
 }
 
 async function saveAsTemplate(){
@@ -1518,7 +1548,34 @@ function renderSharedTrip(row) {
   document.getElementById('sh-content').style.display = 'block';
   const d = row.data || {};
   document.title = row.name + ' – Packr';
-  document.getElementById('sh-title').textContent = row.name;
+  document.getElementById('sh-title').textContent = d.mode==='backpacking' ? (d.loadoutName||row.name) : row.name;
+  // Backpacking loadout view
+  if (d.mode === 'backpacking') {
+    document.getElementById('sh-chips').innerHTML = '<span class="chip">🎒 Backpacking Loadout</span>';
+    // Weight stats
+    const gear = d.gear||[], lo = d.loadout||{};
+    let plOz=0,pkOz=0,plCt=0,pkCt=0;
+    gear.forEach(g=>{const s=lo[g.id];const eq=s?.qty??g.qty??1;if(s&&(s.planned||s.packed)){plOz+=g.weight*eq;plCt++;}if(s&&s.packed){pkOz+=g.weight*eq;pkCt++;}});
+    document.getElementById('sh-ptext').textContent=ozToLb(plOz)+' lb planned · '+ozToLb(pkOz)+' lb packed';
+    document.getElementById('sh-fill').style.width = plCt>0?Math.round((pkCt/plCt)*100)+'%':'0%';
+    // Gear list by category
+    const body=document.getElementById('sh-body'); body.innerHTML='';
+    const cats=[...new Set(gear.map(g=>g.cat))];
+    cats.forEach(cat=>{
+      const ci=gear.filter(g=>g.cat===cat&&lo[g.id]&&(lo[g.id].planned||lo[g.id].packed));
+      if(!ci.length)return;
+      const wrap=document.createElement('div');wrap.style.cssText='margin-bottom:1.5rem';
+      const hdr=document.createElement('div');hdr.className='section-label';hdr.style.marginBottom='6px';hdr.textContent=cat;wrap.appendChild(hdr);
+      ci.forEach(g=>{
+        const s=lo[g.id]; const eq=s?.qty??g.qty??1;
+        const row2=document.createElement('div');row2.style.cssText='display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+        row2.innerHTML=`<span style="width:15px;height:15px;border-radius:4px;flex-shrink:0;border:1.5px solid ${s.packed?'rgba(45,122,58,0.8)':'rgba(214,168,48,0.6)'};background:${s.packed?'rgba(45,122,58,0.25)':'rgba(214,168,48,0.18)'};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 10 10" style="width:8px;height:8px;stroke:${s.packed?'rgba(45,122,58,0.9)':'rgba(180,140,30,0.9)'};fill:none;stroke-width:2.5"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></span><span style="flex:1;font-size:14px;color:var(--color-text-primary)">${g.name}${eq>1?' ×'+eq:''}</span><span style="font-size:12px;color:var(--color-text-tertiary)">${g.weight>0?eq*g.weight+' oz':''}</span>`;
+        wrap.appendChild(row2);
+      });
+      body.appendChild(wrap);
+    });
+    return;
+  }
   // Chips
   const dep=d.depart, ret=d.returnDate;
   const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
