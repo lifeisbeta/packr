@@ -791,11 +791,17 @@ function initTripSetup(){
   function sync(){const up=inp.value.length>0||document.activeElement===inp;lbl.style.top=up?'9px':'50%';lbl.style.transform=up?'translateY(0)':'translateY(-50%)';lbl.style.fontSize=up?'11px':'15px';lbl.style.color=up?'var(--color-text-secondary)':'var(--color-text-tertiary)';lbl.style.letterSpacing=up?'0.04em':'normal';}
   ['input','focus','blur'].forEach(e=>inp.addEventListener(e,sync));sync();
   drawCal(document.getElementById('cal1'));drawCal(document.getElementById('cal2'));
-  const dest = document.getElementById('f-dest'), lblD = document.getElementById('lbl-dest');
-  function syncDest() { const up = dest.value.length > 0 || document.activeElement === dest; lblD.style.top = up?'9px':'50%'; lblD.style.transform = up?'translateY(0)':'translateY(-50%)'; lblD.style.fontSize = up?'11px':'15px'; lblD.style.color = up?'var(--color-text-secondary)':'var(--color-text-tertiary)'; lblD.style.letterSpacing = up?'0.04em':'normal'; }
-  ['input','focus','blur'].forEach(e => dest.addEventListener(e, syncDest)); syncDest();
-  dest.addEventListener('blur', maybeWeather);
 }
+// Destination label float + weather fetch — initialized once at load like date listeners
+(function initDestListeners(){
+  const dest=document.getElementById('f-dest'),lblD=document.getElementById('lbl-dest');
+  function syncDest(){const up=dest.value.length>0||document.activeElement===dest;lblD.style.top=up?'9px':'50%';lblD.style.transform=up?'translateY(0)':'translateY(-50%)';lblD.style.fontSize=up?'11px':'15px';lblD.style.color=up?'var(--color-text-secondary)':'var(--color-text-tertiary)';lblD.style.letterSpacing=up?'0.04em':'normal';}
+  ['input','focus','blur'].forEach(e=>dest.addEventListener(e,syncDest));syncDest();
+  // Fetch weather as you type (debounced 800ms) and on blur
+  let _wt=null;
+  dest.addEventListener('input',()=>{clearTimeout(_wt);_wt=setTimeout(maybeWeather,800);});
+  dest.addEventListener('blur',maybeWeather);
+})();
 // Date listeners set up once at load — work regardless of how setup screen is reached
 (function initDateListeners(){
   const fD=document.getElementById('f-depart'),fR=document.getElementById('f-return'),dvD=document.getElementById('dv-depart'),dvR=document.getElementById('dv-return');
