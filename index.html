@@ -795,6 +795,8 @@ function updateTripDetails() {
   // Keep trip name in sync in the trips array (for home screen)
   const trip=trips.find(t=>t.id===currentTripId);if(trip)trip.name=name;
   showScreen('s-trip-list');updateTP();
+  // Auto-save so the user doesn't have to hit Save Trip manually
+  saveTrip();
 }
 function onBuildOrUpdate(){if(currentTripId){updateTripDetails();}else{buildTripList();}}
 
