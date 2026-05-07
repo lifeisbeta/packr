@@ -293,8 +293,8 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
     <div class="addon-card" id="ac-bjj" onclick="toggleAddon('bjj')"><div class="addon-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M9 8l-2 4h10l-2-4M7 12l-2 8M17 12l2 8M9 12l1 5h4l1-5M7 16h10"/></svg></div><div class="addon-text"><div class="addon-name">BJJ training</div><div class="addon-desc">Gi, NoGi set, gym bag</div></div><div class="addon-check"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></div></div>
     <div class="addon-card" id="ac-mich" onclick="toggleAddon('mich')"><div class="addon-icon"><svg viewBox="0 0 24 24"><path d="M12 2l2 4h5l-4 3 1.5 5L12 11l-4.5 3L9 9 5 6h5z"/><path d="M8 15l-2 5h12l-2-5"/></svg></div><div class="addon-text"><div class="addon-name">Michigan game</div><div class="addon-desc">Jersey, long sleeve, boggan, Michigan shoes</div></div><div class="addon-check"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></div></div>
   </div>
-  <button onclick="buildTripList()" style="width:100%;padding:16px 24px;background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:14px;font-size:15px;font-weight:500;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;justify-content:space-between" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-    <span style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--color-background-primary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Build my packing list</span>
+  <button id="build-btn" onclick="onBuildOrUpdate()" style="width:100%;padding:16px 24px;background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:14px;font-size:15px;font-weight:500;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;justify-content:space-between" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+    <span style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--color-background-primary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg><span id="build-btn-text">Build my packing list</span></span>
     <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--color-background-primary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
   </button>
 </div>
@@ -306,7 +306,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
     <div style="flex:1;min-width:0"><h1 class="page-title" id="l-title">Trip</h1><div class="trip-chips" id="l-chips"></div></div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <button class="ghost-btn" onclick="saveTrip()" style="font-size:12px;padding:6px 12px">Save trip</button>
-      <button class="ghost-btn" onclick="showScreen('s-trip-setup')">← Edit</button>
+      <button class="ghost-btn" onclick="editCurrentTrip()">← Edit</button>
     </div>
   </div>
   <div id="l-warn" style="display:none"><div class="warn-bar"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Flying: remove knife from EDC pouch before leaving.</div></div>
@@ -644,7 +644,26 @@ function showScreen(id) {
   window.scrollTo(0, 0);
 }
 function goHome() { renderHomeTripsList(); showScreen('s-home'); }
-function goTrip() { initTripSetup(); showScreen('s-trip-setup'); }
+function goTrip() {
+  currentTripId = null;
+  // Clear name field
+  const nameInp = document.getElementById('f-name'), lbl = document.getElementById('lbl-name');
+  nameInp.value = '';
+  lbl.style.top='50%';lbl.style.transform='translateY(-50%)';lbl.style.fontSize='15px';lbl.style.color='var(--color-text-tertiary)';lbl.style.letterSpacing='normal';
+  // Clear dates
+  const fD=document.getElementById('f-depart'),fR=document.getElementById('f-return');
+  fD.value='';fR.value='';
+  document.getElementById('dv-depart').textContent='Select date';document.getElementById('dv-depart').classList.add('empty');
+  document.getElementById('dv-return').textContent='Select date';document.getElementById('dv-return').classList.add('empty');
+  document.getElementById('nights-badge').style.display='none';
+  // Reset transport & addons
+  transport='car';addons={moto:false,bjj:false,mich:false};
+  setTransport('car');
+  ['moto','bjj','mich'].forEach(k=>document.getElementById('ac-'+k).classList.remove('on'));
+  // Reset button label
+  document.getElementById('build-btn-text').textContent='Build my packing list';
+  initTripSetup();showScreen('s-trip-setup');
+}
 function goBP() { initBPPill(); renderBPLoadout(); renderInventory(); renderTemplates(); renderTrips(); showScreen('s-bp'); }
 
 // ─────────────────────────────────────────────
@@ -738,6 +757,46 @@ function buildTripList(){
   tripEditingIdx=null;tripAddOpenSec=null;tripSubAddOpenIdx=null;
   renderTripList();showScreen('s-trip-list');updateTP();
 }
+
+function editCurrentTrip() {
+  if (currentTripId) {
+    const trip = trips.find(t => t.id === currentTripId);
+    if (trip) {
+      const d = trip.data;
+      // Pre-fill name
+      const nameInp = document.getElementById('f-name'), lbl = document.getElementById('lbl-name');
+      nameInp.value = trip.name || '';
+      const up = nameInp.value.length > 0;
+      lbl.style.top=up?'9px':'50%';lbl.style.transform=up?'translateY(0)':'translateY(-50%)';lbl.style.fontSize=up?'11px':'15px';lbl.style.color=up?'var(--color-text-secondary)':'var(--color-text-tertiary)';lbl.style.letterSpacing=up?'0.04em':'normal';
+      // Pre-fill dates
+      const fD=document.getElementById('f-depart'),fR=document.getElementById('f-return');
+      const dvD=document.getElementById('dv-depart'),dvR=document.getElementById('dv-return');
+      if(d.depart){fD.value=d.depart;dvD.textContent=fmtD(d.depart);dvD.classList.remove('empty');}
+      else{fD.value='';dvD.textContent='Select date';dvD.classList.add('empty');}
+      if(d.returnDate){fR.value=d.returnDate;dvR.textContent=fmtD(d.returnDate);dvR.classList.remove('empty');}
+      else{fR.value='';dvR.textContent='Select date';dvR.classList.add('empty');}
+      // Transport & addons
+      setTransport(d.transport||'car');
+      addons=Object.assign({moto:false,bjj:false,mich:false},d.addons||{});
+      ['moto','bjj','mich'].forEach(k=>document.getElementById('ac-'+k).classList.toggle('on',addons[k]));
+      calcN();
+    }
+    document.getElementById('build-btn-text').textContent = 'Update trip details';
+  }
+  showScreen('s-trip-setup');
+}
+function updateTripDetails() {
+  const name=document.getElementById('f-name').value.trim()||'Trip';
+  const d=document.getElementById('f-depart').value,r=document.getElementById('f-return').value;
+  const dr=d&&r?`${fmtS(d)} – ${fmtS(r)}`:null;
+  document.getElementById('l-title').textContent=name;
+  document.getElementById('l-chips').innerHTML=[computedNights+' night'+(computedNights!==1?'s':''),transport==='plane'?'Flying':'Driving',dr,addons.moto?'Motorcycle':null,addons.bjj?'BJJ':null,addons.mich?'Michigan Game':null].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
+  document.getElementById('l-warn').style.display=transport==='plane'?'block':'none';
+  // Keep trip name in sync in the trips array (for home screen)
+  const trip=trips.find(t=>t.id===currentTripId);if(trip)trip.name=name;
+  showScreen('s-trip-list');updateTP();
+}
+function onBuildOrUpdate(){if(currentTripId){updateTripDetails();}else{buildTripList();}}
 
 const lmap={wear:'Wear on travel day',toi:'Toiletries',tops:'Tops',bot:'Bottoms',socks:'Socks',shoes:'Shoes',out:'Outerwear',elec:'Electronics',misc:'Miscellaneous',moto:'Motorcycle kit',bjj:'BJJ',mich:'Michigan game'};
 function secTot(secId){return tripItems.filter(i=>i.sec===secId).reduce((s,i)=>{const k=i.children&&i.children.length>0;return s+(k?i.children.length:(i.qty&&i.qty>=1?i.qty:1));},0);}
