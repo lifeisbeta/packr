@@ -283,6 +283,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
   <div style="position:relative;margin-bottom:1.5rem">
     <input id="f-dest" type="text" autocomplete="off" style="width:100%;height:54px;padding:20px 14px 6px;font-size:15px;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:8px;outline:none;appearance:none;display:block"/>
     <label id="lbl-dest" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--color-text-tertiary);pointer-events:none;transition:all 0.15s">Where are you going?</label>
+    <div id="dest-suggestions" style="display:none;position:absolute;top:58px;left:0;right:0;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:10px;margin-top:2px;box-shadow:0 4px 16px rgba(0,0,0,0.1);z-index:100;overflow:hidden"></div>
   </div>
   <div class="field-row">
     <div class="date-field"><div class="date-field-text"><div class="date-field-label">Departure</div><div class="date-field-value empty" id="dv-depart">Select date</div></div><div class="date-field-icon"><canvas id="cal1" width="16" height="16"></canvas></div><input type="date" id="f-depart"/></div>
@@ -801,11 +802,19 @@ function initTripSetup(){
 (function initDestListeners(){
   const dest=document.getElementById('f-dest'),lblD=document.getElementById('lbl-dest');
   function syncDest(){const up=dest.value.length>0||document.activeElement===dest;lblD.style.top=up?'9px':'50%';lblD.style.transform=up?'translateY(0)':'translateY(-50%)';lblD.style.fontSize=up?'11px':'15px';lblD.style.color=up?'var(--color-text-secondary)':'var(--color-text-tertiary)';lblD.style.letterSpacing=up?'0.04em':'normal';}
-  ['input','focus','blur'].forEach(e=>dest.addEventListener(e,syncDest));syncDest();
-  // Fetch weather as you type (debounced 800ms) and on blur
-  let _wt=null;
-  dest.addEventListener('input',()=>{clearTimeout(_wt);_wt=setTimeout(maybeWeather,800);});
-  dest.addEventListener('blur',maybeWeather);
+  ['focus','blur'].forEach(e=>dest.addEventListener(e,syncDest));syncDest();
+  let _st=null;
+  dest.addEventListener('input',()=>{
+    syncDest();
+    clearTimeout(_st);
+    const q=dest.value.trim();
+    if(q.length>=2){_st=setTimeout(()=>fetchCitySuggestions(q),300);}
+    else{document.getElementById('dest-suggestions').style.display='none';}
+  });
+  dest.addEventListener('blur',()=>{
+    // Delay so mousedown on a suggestion fires before dropdown hides
+    setTimeout(()=>{document.getElementById('dest-suggestions').style.display='none';syncDest();},200);
+  });
 })();
 // Date listeners set up once at load — work regardless of how setup screen is reached
 (function initDateListeners(){
@@ -1355,6 +1364,44 @@ function renderDefaults() {
 // ─────────────────────────────────────────────
 // WEATHER
 // ─────────────────────────────────────────────
+async function fetchCitySuggestions(query) {
+  const drop=document.getElementById('dest-suggestions');
+  try {
+    const res=await fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(query)+'&limit=7&lang=en');
+    const data=await res.json();
+    const features=(data.features||[]).filter(f=>['city','town','village','municipality','hamlet','locality'].includes(f.properties.type)).slice(0,5);
+    if(!features.length){drop.style.display='none';return;}
+    drop.innerHTML='';
+    features.forEach(f=>{
+      const p=f.properties;
+      const city=p.name;
+      const state=p.state||p.county||'';
+      const country=p.country||'';
+      const sub=[state,country].filter(Boolean).join(', ');
+      const weatherQ=[city,state,country].filter(Boolean).join(', ');
+      const displayName=state?city+', '+state:city;
+      const item=document.createElement('div');
+      item.style.cssText='padding:11px 14px;cursor:pointer;border-bottom:0.5px solid var(--color-border-tertiary);last-child{border:none}';
+      item.innerHTML='<div style="font-size:14px;font-weight:500;color:var(--color-text-primary)">'+city+'</div><div style="font-size:12px;color:var(--color-text-tertiary);margin-top:2px">'+sub+'</div>';
+      item.addEventListener('mouseenter',()=>item.style.background='var(--color-background-secondary)');
+      item.addEventListener('mouseleave',()=>item.style.background='');
+      item.addEventListener('mousedown',e=>{e.preventDefault();selectCity(displayName,weatherQ);});
+      drop.appendChild(item);
+    });
+    drop.style.display='block';
+  } catch(e){drop.style.display='none';}
+}
+function selectCity(displayName,weatherQ){
+  const dest=document.getElementById('f-dest'),lblD=document.getElementById('lbl-dest');
+  dest.value=displayName;
+  document.getElementById('dest-suggestions').style.display='none';
+  lblD.style.top='9px';lblD.style.transform='translateY(0)';lblD.style.fontSize='11px';lblD.style.color='var(--color-text-secondary)';lblD.style.letterSpacing='0.04em';
+  currentTripDestination=displayName;
+  const start=document.getElementById('f-depart').value,end=document.getElementById('f-return').value;
+  if(start){fetchWeather(weatherQ,start,end||start);}
+  else{document.getElementById('weather-card').style.display='none';}
+}
+
 function maybeWeather() {
   const city = document.getElementById('f-dest').value.trim();
   const start = document.getElementById('f-depart').value;
