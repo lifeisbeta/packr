@@ -1555,7 +1555,7 @@ function renderSharedTrip(row) {
         const nm=document.createElement('div'); nm.style.cssText='font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px'; nm.textContent=item.name; row.appendChild(nm);
         item.children.forEach(ch=>{
           const cr=document.createElement('div'); cr.style.cssText='display:flex;align-items:center;gap:8px;padding:3px 0 3px 10px';
-          cr.innerHTML=`<span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${ch.checked?'var(--color-text-primary)':'var(--color-border-secondary)'}"></span><span style="font-size:13px;color:${ch.checked?'var(--color-text-tertiary)':'var(--color-text-primary)'};text-decoration:${ch.checked?'line-through':'none'}">${ch.name}</span>`;
+          cr.innerHTML=`<span style="width:13px;height:13px;border-radius:3px;flex-shrink:0;border:1.5px solid ${ch.checked?'var(--color-text-primary)':'var(--color-border-secondary)'};background:${ch.checked?'var(--color-text-primary)':'transparent'};display:flex;align-items:center;justify-content:center">${ch.checked?'<svg viewBox="0 0 10 10" style="width:7px;height:7px;stroke:#fff;fill:none;stroke-width:2.5"><polyline points="1.5,5 4,7.5 8.5,2"/></svg>':''}</span><span style="font-size:13px;color:${ch.checked?'var(--color-text-tertiary)':'var(--color-text-primary)'};text-decoration:${ch.checked?'line-through':'none'}">${ch.name}</span>`;
           row.appendChild(cr);
         });
       } else {
