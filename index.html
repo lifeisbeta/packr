@@ -236,6 +236,47 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .trip-card-name{font-size:15px;font-weight:500;color:var(--color-text-primary)}
 .trip-card-meta{font-size:12px;color:var(--color-text-tertiary);margin-top:2px}
 
+/* ── DYNAMIC ADDONS ── */
+.addon-initial{width:38px;height:38px;border-radius:8px;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;color:var(--color-text-secondary);letter-spacing:-0.02em}
+.addon-card.on .addon-initial{background:var(--color-text-primary);color:var(--color-background-primary)}
+.addon-add-card{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px dashed var(--color-border-secondary);border-radius:10px;cursor:pointer;color:var(--color-text-tertiary);transition:all 0.15s}
+.addon-add-card:hover{border-color:var(--color-text-primary);color:var(--color-text-primary)}
+.addon-add-icon{width:38px;height:38px;border-radius:8px;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;line-height:1;color:var(--color-text-tertiary)}
+.addon-del{background:none;border:none;font-size:11px;color:var(--color-text-tertiary);cursor:pointer;padding:2px 6px;border-radius:4px;font-family:var(--font-sans);margin-left:auto;flex-shrink:0}
+.addon-del:hover{color:#e53e3e}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:flex-end;justify-content:center}
+.modal-overlay.hidden{display:none}
+.modal-sheet{background:var(--color-background-primary);border-radius:20px 20px 0 0;padding:24px 20px 44px;width:100%;max-width:580px;display:flex;flex-direction:column;gap:14px;max-height:85vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:600;color:var(--color-text-primary)}
+.modal-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-tertiary);margin-bottom:4px}
+.modal-input{width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--color-border-secondary);border-radius:10px;background:var(--color-background-primary);color:var(--color-text-primary);outline:none;font-family:var(--font-sans)}
+.modal-input:focus{border-color:var(--color-text-primary)}
+.modal-textarea{resize:vertical;min-height:90px;line-height:1.6}
+.modal-row{display:flex;gap:10px}
+.modal-cancel{flex:1;padding:13px;font-size:15px;font-weight:500;background:var(--color-background-secondary);color:var(--color-text-primary);border:none;border-radius:10px;cursor:pointer;font-family:var(--font-sans)}
+.modal-save{flex:2;padding:13px;font-size:15px;font-weight:500;background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:10px;cursor:pointer;font-family:var(--font-sans)}
+
+/* ── ONBOARDING ── */
+.onboard-step{display:none}.onboard-step.active{display:block}
+.onboard-progress{display:flex;gap:6px;margin-bottom:2rem}
+.onboard-pip{height:3px;border-radius:2px;flex:1;background:var(--color-border-secondary);transition:background 0.2s}
+.onboard-pip.done{background:var(--color-text-primary)}
+.onboard-title{font-size:26px;font-weight:500;margin-bottom:6px;line-height:1.2}
+.onboard-sub{font-size:14px;color:var(--color-text-secondary);margin-bottom:2rem;line-height:1.5}
+.onboard-item-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.onboard-item-name{font-size:14px;color:var(--color-text-primary)}
+.onboard-toggle{position:relative;width:42px;height:24px;flex-shrink:0}
+.onboard-toggle input{opacity:0;width:0;height:0;position:absolute}
+.onboard-slider{position:absolute;inset:0;border-radius:12px;background:var(--color-border-secondary);transition:background 0.2s;cursor:pointer}
+.onboard-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;border-radius:50%;background:#fff;transition:transform 0.2s}
+.onboard-toggle input:checked+.onboard-slider{background:var(--color-text-primary)}
+.onboard-toggle input:checked+.onboard-slider:before{transform:translateX(18px)}
+.onboard-next-btn{width:100%;padding:16px;font-size:15px;font-weight:500;background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:14px;cursor:pointer;font-family:var(--font-sans);margin-top:2rem}
+.onboard-skip{display:block;text-align:center;font-size:13px;color:var(--color-text-tertiary);cursor:pointer;margin-top:12px;padding:4px}
+.onboard-skip:hover{color:var(--color-text-secondary)}
+
 /* ── AUTH ── */
 .auth-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:0}
 .auth-logo{font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:2.5rem}
@@ -348,11 +389,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
     <button id="sb-plane" onclick="setTransport('plane')" style="display:flex;align-items:center;gap:7px;padding:9px 22px;border-radius:999px;border:none;cursor:pointer;font-family:var(--font-sans);font-size:14px;white-space:nowrap;background:transparent;color:var(--color-text-secondary)"><svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:var(--color-text-secondary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0"><path d="M22 16.5L13 12V4.5a1.5 1.5 0 0 0-3 0V12L2 16.5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-3l8 2.5v-2z"/></svg>Flying</button>
   </div>
   <div class="section-label">Add-ons</div>
-  <div class="addon-grid">
-    <div class="addon-card" id="ac-moto" onclick="toggleAddon('moto')"><div class="addon-icon"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="17" r="2.5"/><circle cx="18.5" cy="17" r="2.5"/><path d="M8 17h7M14 17l-1.5-6H10L7.5 9H5M14.5 8h3L19 12M10.5 11h3"/></svg></div><div class="addon-text"><div class="addon-name">Motorcycle riding</div><div class="addon-desc">Jacket, helmet, chaps, GoPros, boots, gloves</div></div><div class="addon-check"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></div></div>
-    <div class="addon-card" id="ac-bjj" onclick="toggleAddon('bjj')"><div class="addon-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M9 8l-2 4h10l-2-4M7 12l-2 8M17 12l2 8M9 12l1 5h4l1-5M7 16h10"/></svg></div><div class="addon-text"><div class="addon-name">BJJ training</div><div class="addon-desc">Gi, NoGi set, gym bag</div></div><div class="addon-check"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></div></div>
-    <div class="addon-card" id="ac-mich" onclick="toggleAddon('mich')"><div class="addon-icon"><svg viewBox="0 0 24 24"><path d="M12 2l2 4h5l-4 3 1.5 5L12 11l-4.5 3L9 9 5 6h5z"/><path d="M8 15l-2 5h12l-2-5"/></svg></div><div class="addon-text"><div class="addon-name">Michigan game</div><div class="addon-desc">Jersey, long sleeve, boggan, Michigan shoes</div></div><div class="addon-check"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></div></div>
-  </div>
+  <div class="addon-grid" id="addon-grid"></div>
   <div style="text-align:right;margin-bottom:1rem">
     <button onclick="goDefaults()" style="background:none;border:none;font-size:13px;color:var(--color-text-tertiary);cursor:pointer;font-family:var(--font-sans);padding:0">Customize default items →</button>
   </div>
@@ -360,6 +397,69 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
     <span style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--color-background-primary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg><span id="build-btn-text">Build my packing list</span></span>
     <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--color-background-primary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
   </button>
+</div>
+
+<!-- ADDON MODAL -->
+<div class="modal-overlay hidden" id="addon-modal">
+  <div class="modal-sheet">
+    <div class="modal-title" id="addon-modal-title">New add-on</div>
+    <div>
+      <div class="modal-label">Category name</div>
+      <input class="modal-input" id="addon-modal-name" placeholder="e.g. Camera kit, Golf clubs…" maxlength="40"/>
+    </div>
+    <div>
+      <div class="modal-label">Description <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+      <input class="modal-input" id="addon-modal-desc" placeholder="Short note shown on the card"/>
+    </div>
+    <div>
+      <div class="modal-label">Items — one per line</div>
+      <textarea class="modal-input modal-textarea" id="addon-modal-items" placeholder="Camera body&#10;Extra batteries&#10;Memory cards&#10;Tripod"></textarea>
+    </div>
+    <div class="modal-row">
+      <button class="modal-cancel" onclick="closeAddonModal()">Cancel</button>
+      <button class="modal-save" onclick="saveAddonModal()">Save add-on</button>
+    </div>
+  </div>
+</div>
+
+<!-- ONBOARDING -->
+<div id="s-onboard" class="screen">
+  <div style="padding-top:1rem">
+    <div class="onboard-progress">
+      <div class="onboard-pip done" id="ob-pip-1"></div>
+      <div class="onboard-pip" id="ob-pip-2"></div>
+      <div class="onboard-pip" id="ob-pip-3"></div>
+    </div>
+
+    <!-- Step 1: Default items -->
+    <div class="onboard-step active" id="ob-step-1">
+      <div class="onboard-title">Your default packing list</div>
+      <div class="onboard-sub">Toggle off anything you never pack. These become your starting point for every new trip.</div>
+      <div id="ob-items-body"></div>
+      <button class="onboard-next-btn" onclick="onboardNext(2)">Continue →</button>
+    </div>
+
+    <!-- Step 2: Add-ons -->
+    <div class="onboard-step" id="ob-step-2">
+      <div class="onboard-title">Custom add-ons</div>
+      <div class="onboard-sub">Got gear categories you bring for specific trips — like a camera kit or golf clubs? Add them here and toggle them on per trip.</div>
+      <div id="ob-addons-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem"></div>
+      <div class="addon-add-card" onclick="showAddonModal(true)">
+        <div class="addon-add-icon">+</div>
+        <div style="font-size:14px">Add a category</div>
+      </div>
+      <button class="onboard-next-btn" onclick="onboardNext(3)">Continue →</button>
+      <span class="onboard-skip" onclick="onboardNext(3)">Skip for now</span>
+    </div>
+
+    <!-- Step 3: Backpacking -->
+    <div class="onboard-step" id="ob-step-3">
+      <div class="onboard-title">Backpacking gear</div>
+      <div class="onboard-sub">Packr can manage your full gear inventory — weight, cost, loadouts. Do you want to set that up now?</div>
+      <button class="onboard-next-btn" onclick="finishOnboard(true)">Yes, set up my gear →</button>
+      <span class="onboard-skip" onclick="finishOnboard(false)">No thanks, take me home</span>
+    </div>
+  </div>
 </div>
 
 <!-- DEFAULTS MANAGEMENT -->
@@ -481,7 +581,8 @@ function showSync(state, text) {
 // ─────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────
-let transport = 'car', addons = {moto:false, bjj:false, mich:false};
+let transport = 'car', addons = {};
+let addonDefs = []; // [{id, name, description, items:[str]}] loaded from DB
 let tripItems = [], computedNights = 2, currentTripId = null, currentTripNotes = '';
 let tripEditingIdx = null, tripAddOpenSec = null, tripSubAddOpenIdx = null;
 let defaultExtras = {}; // {sectionId: ['custom item']}
@@ -618,16 +719,11 @@ async function loadAll() {
     // Load gear inventory
     const {data: gearData, error: gearErr} = await db.from('gear_inventory').select('*').order('sort_order');
     if (gearErr) throw gearErr;
-    if (gearData && gearData.length > 0) {
-      gearInventory = gearData.map(r => ({
-        id: r.id, name: r.name, cat: r.cat,
-        weight: parseFloat(r.weight)||0, qty: parseInt(r.qty)||1,
-        cost: parseFloat(r.cost)||0, url: r.url||''
-      }));
-    } else {
-      // Seed with defaults on first load
-      await seedDefaultGear();
-    }
+    gearInventory = (gearData||[]).map(r => ({
+      id: r.id, name: r.name, cat: r.cat,
+      weight: parseFloat(r.weight)||0, qty: parseInt(r.qty)||1,
+      cost: parseFloat(r.cost)||0, url: r.url||''
+    }));
     // Load templates
     const {data: tplData, error: tplErr} = await db.from('loadout_templates').select('*').order('created_at');
     if (tplErr) throw tplErr;
@@ -642,6 +738,9 @@ async function loadAll() {
       id: r.id, name: r.name, data: r.data,
       date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
+    // Load add-on definitions
+    const {data: addonData} = await db.from('addons').select('*').order('sort_order');
+    addonDefs = (addonData||[]).map(r=>({id:r.id,name:r.name,description:r.description||'',items:r.items||[]}));
     await loadDefaultPrefs();
     showSync('saved', 'Loaded');
   } catch(e) {
@@ -697,6 +796,83 @@ async function saveDefaultPrefs() {
     id, name: '__trip_defaults__',
     data: {extras: defaultExtras, hidden: defaultHidden}
   });
+}
+
+// ── ADDON CRUD ──
+async function saveAddonDef(def) {
+  await db.from('addons').upsert({
+    id: def.id, name: def.name, description: def.description,
+    items: def.items, sort_order: addonDefs.indexOf(def)
+  });
+}
+async function deleteAddonDef(id) {
+  addonDefs = addonDefs.filter(a => a.id !== id);
+  await db.from('addons').delete().eq('id', id);
+  renderAddonToggles();
+}
+
+// ── ADDON MODAL ──
+let _addonModalInOnboard = false;
+let _editingAddonId = null;
+function showAddonModal(inOnboard=false) {
+  _addonModalInOnboard = inOnboard;
+  _editingAddonId = null;
+  document.getElementById('addon-modal-title').textContent = 'New add-on';
+  document.getElementById('addon-modal-name').value = '';
+  document.getElementById('addon-modal-desc').value = '';
+  document.getElementById('addon-modal-items').value = '';
+  document.getElementById('addon-modal').classList.remove('hidden');
+}
+function closeAddonModal() {
+  document.getElementById('addon-modal').classList.add('hidden');
+}
+async function saveAddonModal() {
+  const name = document.getElementById('addon-modal-name').value.trim();
+  if (!name) { document.getElementById('addon-modal-name').focus(); return; }
+  const description = document.getElementById('addon-modal-desc').value.trim();
+  const items = document.getElementById('addon-modal-items').value
+    .split('\n').map(s=>s.trim()).filter(Boolean);
+  const id = _editingAddonId || uid();
+  const def = {id, name, description, items};
+  if (_editingAddonId) {
+    const idx = addonDefs.findIndex(a=>a.id===_editingAddonId);
+    if (idx >= 0) addonDefs[idx] = def;
+  } else {
+    addonDefs.push(def);
+  }
+  await saveAddonDef(def);
+  closeAddonModal();
+  if (_addonModalInOnboard) renderOnboardAddons();
+  else renderAddonToggles();
+}
+
+// ── ADDON TOGGLE GRID ──
+function renderAddonToggles() {
+  const grid = document.getElementById('addon-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  addonDefs.forEach(a => {
+    const isOn = !!addons[a.id];
+    const card = document.createElement('div');
+    card.className = 'addon-card' + (isOn ? ' on' : '');
+    card.id = 'ac-' + a.id;
+    const initials = a.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    card.innerHTML = `<div class="addon-initial">${initials}</div><div class="addon-text"><div class="addon-name">${a.name}</div>${a.description?`<div class="addon-desc">${a.description}</div>`:''}</div><div class="addon-check"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></div>`;
+    card.addEventListener('click', () => toggleAddon(a.id));
+    grid.appendChild(card);
+    // Delete button (only when not "on")
+    const del = document.createElement('button');
+    del.className = 'addon-del'; del.textContent = '✕';
+    del.title = 'Remove add-on';
+    del.addEventListener('click', async e => { e.stopPropagation(); await deleteAddonDef(a.id); });
+    card.appendChild(del);
+  });
+  // "Add" card
+  const addCard = document.createElement('div');
+  addCard.className = 'addon-add-card';
+  addCard.innerHTML = `<div class="addon-add-icon">+</div><div style="font-size:14px">New add-on</div>`;
+  addCard.addEventListener('click', () => showAddonModal(false));
+  grid.appendChild(addCard);
 }
 
 async function saveTemplate(tpl) {
@@ -814,9 +990,9 @@ function goTrip() {
   lblD2.style.top='50%';lblD2.style.transform='translateY(-50%)';lblD2.style.fontSize='15px';lblD2.style.color='var(--color-text-tertiary)';lblD2.style.letterSpacing='normal';
   document.getElementById('weather-card').style.display = 'none';
   // Reset transport & addons
-  transport='car';addons={moto:false,bjj:false,mich:false};
+  transport='car';addons={};
   setTransport('car');
-  ['moto','bjj','mich'].forEach(k=>document.getElementById('ac-'+k).classList.remove('on'));
+  renderAddonToggles();
   // Reset button label
   document.getElementById('build-btn-text').textContent='Build my packing list';
   document.getElementById('setup-back-label').textContent='Packr';
@@ -871,6 +1047,7 @@ function initHome(){const ct=document.getElementById('home-icon-trip'),cb=docume
 // TRIP SETUP
 // ─────────────────────────────────────────────
 function initTripSetup(){
+  renderAddonToggles();
   const inp=document.getElementById('f-name'),lbl=document.getElementById('lbl-name');if(inp._fi)return;inp._fi=true;
   function sync(){const up=inp.value.length>0||document.activeElement===inp;lbl.style.top=up?'9px':'50%';lbl.style.transform=up?'translateY(0)':'translateY(-50%)';lbl.style.fontSize=up?'11px':'15px';lbl.style.color=up?'var(--color-text-secondary)':'var(--color-text-tertiary)';lbl.style.letterSpacing=up?'0.04em':'normal';}
   ['input','focus','blur'].forEach(e=>inp.addEventListener(e,sync));sync();
@@ -905,34 +1082,36 @@ function fmtD(v){return new Date(v+'T00:00:00').toLocaleDateString('en-US',{week
 function fmtS(v){return new Date(v+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});}
 function calcN(){const d=document.getElementById('f-depart').value,r=document.getElementById('f-return').value;const b=document.getElementById('nights-badge'),t=document.getElementById('nights-text');if(d&&r){const dep=new Date(d+'T00:00:00'),ret=new Date(r+'T00:00:00');const diff=Math.round((ret-dep)/86400000);if(diff>0){computedNights=diff;t.innerHTML=`<strong style="color:var(--color-text-primary)">${diff} night${diff!==1?'s':''}</strong>&nbsp;&nbsp;${fmtS(d)} → ${fmtS(r)}`;b.style.display='flex';}else b.style.display='none';}else b.style.display='none';maybeWeather();}
 function setTransport(t){transport=t;const car=document.getElementById('sb-car'),plane=document.getElementById('sb-plane');const base='display:flex;align-items:center;gap:7px;padding:9px 22px;border-radius:999px;border:none;cursor:pointer;font-family:var(--font-sans);font-size:14px;white-space:nowrap;';if(t==='car'){car.style.cssText=base+'background:#1a1a1a;color:#fff;font-weight:500';car.querySelector('svg').style.stroke='#fff';plane.style.cssText=base+'background:transparent;color:var(--color-text-secondary)';plane.querySelector('svg').style.stroke='var(--color-text-secondary)';}else{plane.style.cssText=base+'background:#1a1a1a;color:#fff;font-weight:500';plane.querySelector('svg').style.stroke='#fff';car.style.cssText=base+'background:transparent;color:var(--color-text-secondary)';car.querySelector('svg').style.stroke='var(--color-text-secondary)';}}
-function toggleAddon(k){addons[k]=!addons[k];document.getElementById('ac-'+k).classList.toggle('on',addons[k]);}
+function toggleAddon(k){addons[k]=!addons[k];document.getElementById('ac-'+k)?.classList.toggle('on',addons[k]);}
 function scaleQ(base,n,fx){if(fx)return base;if(n<=2)return base;if(n<=4)return base+1;if(n<=6)return base+2;if(n<=9)return base+3;return base+3+Math.floor((n-9)/3);}
 
 function buildTripList(){
   const name=document.getElementById('f-name').value.trim()||'Trip',n=computedNights,d=document.getElementById('f-depart').value,r=document.getElementById('f-return').value;
   document.getElementById('l-title').textContent=name;const dr=d&&r?`${fmtS(d)} – ${fmtS(r)}`:null;
-  document.getElementById('l-chips').innerHTML=[n+' night'+(n!==1?'s':''),transport==='plane'?'Flying':'Driving',dr,addons.moto?'Motorcycle':null,addons.bjj?'BJJ':null,addons.mich?'Michigan Game':null].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
+  const activeAddonNames = addonDefs.filter(a=>addons[a.id]).map(a=>a.name);
+  document.getElementById('l-chips').innerHTML=[n+' night'+(n!==1?'s':''),transport==='plane'?'Flying':'Driving',dr,...activeAddonNames].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
   document.getElementById('l-warn').style.display=transport==='plane'?'block':'none';
   const mk=(nm,q,ch)=>({name:nm,qty:q||null,checked:false,children:ch||null,expanded:!!ch});
   const defs=[
-    {id:'wear',rows:[mk('Kuhl khakis'),mk('Camo slip-ons'),mk('Rain jacket'),mk('Belt')]},
-    {id:'toi',rows:[mk('Toiletry bag',null,[{name:'Toothbrush',checked:false},{name:'Toothpaste',checked:false},{name:'Deodorant',checked:false},{name:'Face wash',checked:false},{name:'Shampoo',checked:false}]),mk('Night guard')]},
-    {id:'tops',rows:[mk('T-shirts',scaleQ(2,n)),mk('Button-downs',scaleQ(1,n))]},
-    {id:'bot',rows:[mk('Shorts',scaleQ(1,n)),mk('Gym shorts',scaleQ(1,n,true)),mk('Underwear',scaleQ(2,n)),mk('Swim trunks',scaleQ(1,n,true))]},
-    {id:'socks',rows:[mk('Short socks',scaleQ(1,n,true)),mk('Long socks',scaleQ(1,n))]},
-    {id:'shoes',rows:[mk('Tan Altras'),mk('Flip flops')]},
-    {id:'out',rows:[mk('Michigan hat')]},
-    {id:'elec',rows:[mk('Laptop'),mk('iPad'),mk('Tech pouch'),mk('AirPods'),mk('Apple TV pouch')]},
-    {id:'misc',rows:[mk('Corp card'),mk('Meds'),mk('Sling bag'),mk('Holster (backpack)'),mk('Travel pillow'),mk('Water bottle'),mk('Coffee mug'),mk('Snack bag',null,[{name:'Dried fruit',checked:false},{name:'Rice cakes',checked:false},{name:'Oatmeal',checked:false},{name:'Bananas',checked:false},{name:'Pretzels',checked:false},{name:'Protein powder',checked:false},{name:'Protein shaker',checked:false},{name:'Daily packs',checked:false}])]},
+    {id:'wear',rows:[mk('Outfit for travel day'),mk('Light jacket')]},
+    {id:'toi',rows:[mk('Toiletry bag',null,[{name:'Toothbrush',checked:false},{name:'Toothpaste',checked:false},{name:'Deodorant',checked:false},{name:'Face wash',checked:false},{name:'Shampoo',checked:false}])]},
+    {id:'tops',rows:[mk('T-shirts',scaleQ(2,n)),mk('Button-down shirts',scaleQ(1,n))]},
+    {id:'bot',rows:[mk('Pants',scaleQ(1,n)),mk('Shorts',scaleQ(1,n)),mk('Underwear',scaleQ(2,n)),mk('Swim suit',scaleQ(1,n,true))]},
+    {id:'socks',rows:[mk('Socks',scaleQ(2,n))]},
+    {id:'shoes',rows:[mk('Sneakers'),mk('Sandals')]},
+    {id:'out',rows:[mk('Rain jacket')]},
+    {id:'elec',rows:[mk('Phone charger'),mk('Laptop'),mk('Headphones'),mk('Tech pouch')]},
+    {id:'misc',rows:[mk('Meds'),mk('Sunglasses'),mk('Travel pillow'),mk('Water bottle'),mk('Reusable bag')]},
   ];
   // Apply user's hidden items and custom extras
   defs.forEach(sec => {
     sec.rows = sec.rows.filter(r => !defaultHidden[r.name]);
     (defaultExtras[sec.id] || []).forEach(name => sec.rows.push(mk(name)));
   });
-  if(addons.moto)defs.push({id:'moto',rows:[mk('Leather jacket'),mk('Chaps'),mk('Helmet'),mk('Gloves'),mk('Boots'),mk('GoPro cameras',3),mk('GoPro batteries')]});
-  if(addons.bjj)defs.push({id:'bjj',rows:[mk('Gi'),mk('NoGi set'),mk('Gym bag')]});
-  if(addons.mich)defs.push({id:'mich',rows:[mk('Jersey'),mk('Long sleeve T'),mk('Michigan boggan'),mk('Michigan shoes')]});
+  // Dynamic add-ons
+  addonDefs.forEach(a => {
+    if (addons[a.id]) defs.push({id: a.id, rows: a.items.map(nm => mk(nm))});
+  });
   currentTripId = null;currentTripNotes='';
   const notesEl=document.getElementById('l-notes');notesEl.value='';notesEl.style.height='auto';
   tripItems=[];defs.forEach(s=>s.rows.forEach(r=>tripItems.push({sec:s.id,...r})));
@@ -962,8 +1141,8 @@ function editCurrentTrip() {
       else{fR.value='';dvR.textContent='Select date';dvR.classList.add('empty');}
       // Transport & addons
       setTransport(d.transport||'car');
-      addons=Object.assign({moto:false,bjj:false,mich:false},d.addons||{});
-      ['moto','bjj','mich'].forEach(k=>document.getElementById('ac-'+k).classList.toggle('on',addons[k]));
+      addons=Object.assign({},d.addons||{});
+      renderAddonToggles();
       // Restore destination
       const destInp = document.getElementById('f-dest'), lblD = document.getElementById('lbl-dest');
       destInp.value = d.destination || '';
@@ -984,7 +1163,7 @@ function updateTripDetails() {
   const d=document.getElementById('f-depart').value,r=document.getElementById('f-return').value;
   const dr=d&&r?`${fmtS(d)} – ${fmtS(r)}`:null;
   document.getElementById('l-title').textContent=name;
-  document.getElementById('l-chips').innerHTML=[computedNights+' night'+(computedNights!==1?'s':''),transport==='plane'?'Flying':'Driving',dr,addons.moto?'Motorcycle':null,addons.bjj?'BJJ':null,addons.mich?'Michigan Game':null].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
+  document.getElementById('l-chips').innerHTML=[computedNights+' night'+(computedNights!==1?'s':''),transport==='plane'?'Flying':'Driving',dr,...addonDefs.filter(a=>addons[a.id]).map(a=>a.name)].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
   document.getElementById('l-warn').style.display=transport==='plane'?'block':'none';
   // Keep trip name in sync in the trips array (for home screen)
   const trip=trips.find(t=>t.id===currentTripId);if(trip)trip.name=name;
@@ -996,7 +1175,8 @@ function updateTripDetails() {
 }
 function onBuildOrUpdate(){if(currentTripId){updateTripDetails();}else{buildTripList();}}
 
-const lmap={wear:'Wear on travel day',toi:'Toiletries',tops:'Tops',bot:'Bottoms',socks:'Socks',shoes:'Shoes',out:'Outerwear',elec:'Electronics',misc:'Miscellaneous',moto:'Motorcycle kit',bjj:'BJJ',mich:'Michigan game'};
+const LMAP_BASE={wear:'Wear on travel day',toi:'Toiletries',tops:'Tops',bot:'Bottoms',socks:'Socks',shoes:'Shoes',out:'Outerwear',elec:'Electronics',misc:'Miscellaneous'};
+function lmap(id){return LMAP_BASE[id]||(addonDefs.find(a=>a.id===id)?.name)||id;}
 function secTot(secId){return tripItems.filter(i=>i.sec===secId).reduce((s,i)=>{const k=i.children&&i.children.length>0;return s+(k?i.children.length:(i.qty&&i.qty>=1?i.qty:1));},0);}
 function childSt(item){if(!item.children||!item.children.length)return null;const t=item.children.length,c=item.children.filter(ch=>ch.checked).length;if(c===0)return 'empty';if(c===t)return 'full';return 'partial';}
 
@@ -1006,7 +1186,7 @@ function renderTripList(){
   secs.forEach(secId=>{
     const si=tripItems.filter(i=>i.sec===secId),sd=document.createElement('div');
     const hd=document.createElement('div');hd.className='sec-head'+(secId==='wear'?' wear-head':'');
-    hd.innerHTML=`<span class="sec-name">${lmap[secId]||secId}</span><span class="sec-count">${secTot(secId)}</span>`;
+    hd.innerHTML=`<span class="sec-name">${lmap(secId)}</span><span class="sec-count">${secTot(secId)}</span>`;
     sd.appendChild(hd);
     si.forEach(item=>{const idx=tripItems.indexOf(item);const row=makeTRow(item,secId);sd.appendChild(row);if(tripEditingIdx===idx)sd.appendChild(makeTEP(item,idx));if(row._sl)sd.appendChild(row._sl);});
     sd.appendChild(makeTAR(secId));body.appendChild(sd);
@@ -1329,16 +1509,16 @@ function renderHomeTripsList(){
       e.stopPropagation();
       if(isBP){goBP();}
       else{
-        tripItems=d.items||[];transport=d.transport||'car';addons=d.addons||{moto:false,bjj:false,mich:false};
+        tripItems=d.items||[];transport=d.transport||'car';addons=d.addons||{};
         computedNights=d.nights||2;currentTripId=trip.id;currentTripNotes=d.notes||'';
         currentTripDestination = d.destination || '';
         const destInp2 = document.getElementById('f-dest');
         destInp2.value = currentTripDestination;
         document.getElementById('l-title').textContent=trip.name;
         const dep=d.depart,ret=d.returnDate;const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
+        const loadedAddonNames=addonDefs.filter(a=>addons[a.id]).map(a=>a.name);
         document.getElementById('l-chips').innerHTML=[
-          (d.nights||'?')+' night'+(d.nights!==1?'s':''),d.transport==='plane'?'Flying':'Driving',dr,
-          d.addons&&d.addons.moto?'Motorcycle':null,d.addons&&d.addons.bjj?'BJJ':null,d.addons&&d.addons.mich?'Michigan Game':null
+          (d.nights||'?')+' night'+(d.nights!==1?'s':''),d.transport==='plane'?'Flying':'Driving',dr,...loadedAddonNames
         ].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
         document.getElementById('l-warn').style.display=d.transport==='plane'?'block':'none';
         const notesEl=document.getElementById('l-notes');notesEl.value=currentTripNotes;notesEl.style.height='auto';notesEl.style.height=(notesEl.scrollHeight||36)+'px';
@@ -1373,19 +1553,17 @@ function renderTrips(){
       const d=trip.data;
       tripItems=d.items||[];
       transport=d.transport||'car';
-      addons=d.addons||{moto:false,bjj:false,mich:false};
+      addons=d.addons||{};
       computedNights=d.nights||2;
       currentTripId=trip.id;
       document.getElementById('l-title').textContent=trip.name;
       // Restore chips
       const dep=d.depart,ret=d.returnDate;
       const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
+      const restoredAddonNames=addonDefs.filter(a=>addons[a.id]).map(a=>a.name);
       document.getElementById('l-chips').innerHTML=[
         (d.nights||'?')+' night'+(d.nights!==1?'s':''),
-        d.transport==='plane'?'Flying':'Driving',dr,
-        d.addons&&d.addons.moto?'Motorcycle':null,
-        d.addons&&d.addons.bjj?'BJJ':null,
-        d.addons&&d.addons.mich?'Michigan Game':null
+        d.transport==='plane'?'Flying':'Driving',dr,...restoredAddonNames
       ].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
       document.getElementById('l-warn').style.display=d.transport==='plane'?'block':'none';
       renderTripList();showScreen('s-trip-list');updateTP();
@@ -1398,15 +1576,15 @@ function renderTrips(){
 // DEFAULT ITEMS MANAGEMENT
 // ─────────────────────────────────────────────
 const HARDCODED_SECTIONS = {
-  wear: {label:'Wear on travel day', items:['Kuhl khakis','Camo slip-ons','Rain jacket','Belt']},
-  toi:  {label:'Toiletries', items:['Toiletry bag','Night guard']},
-  tops: {label:'Tops', items:['T-shirts','Button-downs']},
-  bot:  {label:'Bottoms', items:['Shorts','Gym shorts','Underwear','Swim trunks']},
-  socks:{label:'Socks', items:['Short socks','Long socks']},
-  shoes:{label:'Shoes', items:['Tan Altras','Flip flops']},
-  out:  {label:'Outerwear', items:['Michigan hat']},
-  elec: {label:'Electronics', items:['Laptop','iPad','Tech pouch','AirPods','Apple TV pouch']},
-  misc: {label:'Miscellaneous', items:['Corp card','Meds','Sling bag','Holster (backpack)','Travel pillow','Water bottle','Coffee mug','Snack bag']},
+  wear: {label:'Wear on travel day', items:['Outfit for travel day','Light jacket']},
+  toi:  {label:'Toiletries', items:['Toiletry bag']},
+  tops: {label:'Tops', items:['T-shirts','Button-down shirts']},
+  bot:  {label:'Bottoms', items:['Pants','Shorts','Underwear','Swim suit']},
+  socks:{label:'Socks', items:['Socks']},
+  shoes:{label:'Shoes', items:['Sneakers','Sandals']},
+  out:  {label:'Outerwear', items:['Rain jacket']},
+  elec: {label:'Electronics', items:['Phone charger','Laptop','Headphones','Tech pouch']},
+  misc: {label:'Miscellaneous', items:['Meds','Sunglasses','Travel pillow','Water bottle','Reusable bag']},
 };
 
 function goDefaults() { renderDefaults(); showScreen('s-defaults'); }
@@ -1638,7 +1816,7 @@ function renderSharedTrip(row) {
   document.getElementById('sh-chips').innerHTML=[
     d.nights?d.nights+' night'+(d.nights!==1?'s':''):null,
     d.transport==='plane'?'Flying':'Driving', dr,
-    d.addons?.moto?'Motorcycle':null, d.addons?.bjj?'BJJ':null, d.addons?.mich?'Michigan Game':null
+    ...addonDefs.filter(a=>d.addons?.[a.id]).map(a=>a.name)
   ].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
   // Weather
   if (d.destination && d.depart) fetchWeather(d.destination, d.depart, d.returnDate||d.depart, 'sh-weather');
@@ -1658,7 +1836,7 @@ function renderSharedTrip(row) {
   Object.entries(secs).forEach(([secId,secItems])=>{
     const wrap=document.createElement('div'); wrap.style.cssText='margin-bottom:1.5rem';
     const hdr=document.createElement('div'); hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
-    const lbl=document.createElement('div'); lbl.className='section-label'; lbl.textContent=lmap[secId]||secId;
+    const lbl=document.createElement('div'); lbl.className='section-label'; lbl.textContent=lmap(secId);
     let st=0,sd=0; secItems.forEach(i=>{if(i.children?.length){st+=i.children.length;sd+=i.children.filter(c=>c.checked).length;}else{st++;if(i.checked)sd++;}});
     const cnt=document.createElement('div'); cnt.style.cssText='font-size:11px;color:var(--color-text-tertiary)'; cnt.textContent=sd+'/'+st;
     hdr.appendChild(lbl); hdr.appendChild(cnt); wrap.appendChild(hdr);
@@ -1679,6 +1857,86 @@ function renderSharedTrip(row) {
     });
     body.appendChild(wrap);
   });
+}
+
+// ─────────────────────────────────────────────
+// ONBOARDING
+// ─────────────────────────────────────────────
+function startOnboarding() {
+  showScreen('s-onboard');
+  renderOnboardItems();
+  renderOnboardAddons();
+}
+
+function renderOnboardItems() {
+  const body = document.getElementById('ob-items-body');
+  body.innerHTML = '';
+  Object.entries(HARDCODED_SECTIONS).forEach(([id, sec]) => {
+    const grp = document.createElement('div');
+    grp.style.cssText = 'margin-bottom:1.5rem';
+    const hdr = document.createElement('div');
+    hdr.className = 'section-label'; hdr.style.marginBottom = '4px';
+    hdr.textContent = sec.label;
+    grp.appendChild(hdr);
+    sec.items.forEach(itemName => {
+      const isHidden = !!defaultHidden[itemName];
+      const row = document.createElement('div');
+      row.className = 'onboard-item-row';
+      const nm = document.createElement('span');
+      nm.className = 'onboard-item-name';
+      nm.textContent = itemName;
+      nm.style.textDecoration = isHidden ? 'line-through' : 'none';
+      nm.style.color = isHidden ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)';
+      const toggle = document.createElement('label');
+      toggle.className = 'onboard-toggle';
+      const inp = document.createElement('input');
+      inp.type = 'checkbox'; inp.checked = !isHidden;
+      inp.addEventListener('change', async () => {
+        if (inp.checked) { delete defaultHidden[itemName]; }
+        else { defaultHidden[itemName] = true; }
+        nm.style.textDecoration = inp.checked ? 'none' : 'line-through';
+        nm.style.color = inp.checked ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)';
+        await saveDefaultPrefs();
+      });
+      const slider = document.createElement('span');
+      slider.className = 'onboard-slider';
+      toggle.appendChild(inp); toggle.appendChild(slider);
+      row.appendChild(nm); row.appendChild(toggle);
+      grp.appendChild(row);
+    });
+    body.appendChild(grp);
+  });
+}
+
+function renderOnboardAddons() {
+  const list = document.getElementById('ob-addons-list');
+  list.innerHTML = '';
+  addonDefs.forEach(a => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:0.5px solid var(--color-border-tertiary);border-radius:8px;font-size:14px';
+    row.innerHTML = `<span style="font-weight:500">${a.name}</span>`;
+    const del = document.createElement('button');
+    del.style.cssText = 'background:none;border:none;font-size:13px;color:var(--color-text-tertiary);cursor:pointer;font-family:var(--font-sans)';
+    del.textContent = 'Remove';
+    del.addEventListener('click', async () => { await deleteAddonDef(a.id); renderOnboardAddons(); });
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+
+function onboardNext(step) {
+  document.querySelectorAll('.onboard-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ob-step-' + step).classList.add('active');
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById('ob-pip-' + i).classList.toggle('done', i <= step);
+  }
+  window.scrollTo(0, 0);
+}
+
+async function finishOnboard(goToGear) {
+  showScreen('s-home');
+  renderHomeTripsList();
+  if (goToGear) { goBP(); }
 }
 
 // ─────────────────────────────────────────────
@@ -1733,20 +1991,26 @@ async function submitAuth() {
 function onAuthSuccess(user) {
   currentUser = user;
   document.getElementById('home-user-email').textContent = user.email;
-  showScreen('s-home');
   initHome();
   loadAll().then(()=>{
     renderBPLoadout();
     renderInventory();
     renderTemplates();
     renderHomeTripsList();
+    // First-time user: no trips and no gear inventory yet
+    const isNewUser = trips.length === 0 && gearInventory.length === 0 && addonDefs.length === 0;
+    if (isNewUser) {
+      startOnboarding();
+    } else {
+      showScreen('s-home');
+    }
   });
 }
 
 async function signOut() {
   await db.auth.signOut();
   currentUser = null;
-  trips = []; gearInventory = []; templates = [];
+  trips = []; gearInventory = []; templates = []; addonDefs = [];
   loadout = {}; loadoutName = 'Untitled Loadout';
   defaultExtras = {}; defaultHidden = {};
   document.getElementById('auth-email').value = '';
