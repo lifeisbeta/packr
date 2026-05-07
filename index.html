@@ -1868,42 +1868,101 @@ function startOnboarding() {
   renderOnboardAddons();
 }
 
+function makeOnboardItemRow(itemName, secId, isCustom) {
+  const isHidden = !!defaultHidden[itemName];
+  const row = document.createElement('div');
+  row.className = 'onboard-item-row';
+
+  const nm = document.createElement('span');
+  nm.className = 'onboard-item-name';
+  nm.textContent = itemName;
+  nm.style.textDecoration = isHidden ? 'line-through' : 'none';
+  nm.style.color = isHidden ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)';
+
+  const right = document.createElement('div');
+  right.style.cssText = 'display:flex;align-items:center;gap:10px;flex-shrink:0';
+
+  // Remove button (custom items only)
+  if (isCustom) {
+    const del = document.createElement('button');
+    del.style.cssText = 'background:none;border:none;font-size:18px;line-height:1;color:var(--color-text-tertiary);cursor:pointer;padding:0 2px';
+    del.textContent = '×';
+    del.addEventListener('click', async () => {
+      defaultExtras[secId] = (defaultExtras[secId] || []).filter(n => n !== itemName);
+      await saveDefaultPrefs();
+      row.remove();
+    });
+    right.appendChild(del);
+  }
+
+  const toggle = document.createElement('label');
+  toggle.className = 'onboard-toggle';
+  const inp = document.createElement('input');
+  inp.type = 'checkbox'; inp.checked = !isHidden;
+  inp.addEventListener('change', async () => {
+    if (inp.checked) { delete defaultHidden[itemName]; }
+    else { defaultHidden[itemName] = true; }
+    nm.style.textDecoration = inp.checked ? 'none' : 'line-through';
+    nm.style.color = inp.checked ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)';
+    await saveDefaultPrefs();
+  });
+  const slider = document.createElement('span');
+  slider.className = 'onboard-slider';
+  toggle.appendChild(inp); toggle.appendChild(slider);
+  right.appendChild(toggle);
+
+  row.appendChild(nm); row.appendChild(right);
+  return row;
+}
+
 function renderOnboardItems() {
   const body = document.getElementById('ob-items-body');
   body.innerHTML = '';
-  Object.entries(HARDCODED_SECTIONS).forEach(([id, sec]) => {
+  Object.entries(HARDCODED_SECTIONS).forEach(([secId, sec]) => {
     const grp = document.createElement('div');
     grp.style.cssText = 'margin-bottom:1.5rem';
+
     const hdr = document.createElement('div');
     hdr.className = 'section-label'; hdr.style.marginBottom = '4px';
     hdr.textContent = sec.label;
     grp.appendChild(hdr);
-    sec.items.forEach(itemName => {
-      const isHidden = !!defaultHidden[itemName];
-      const row = document.createElement('div');
-      row.className = 'onboard-item-row';
-      const nm = document.createElement('span');
-      nm.className = 'onboard-item-name';
-      nm.textContent = itemName;
-      nm.style.textDecoration = isHidden ? 'line-through' : 'none';
-      nm.style.color = isHidden ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)';
-      const toggle = document.createElement('label');
-      toggle.className = 'onboard-toggle';
-      const inp = document.createElement('input');
-      inp.type = 'checkbox'; inp.checked = !isHidden;
-      inp.addEventListener('change', async () => {
-        if (inp.checked) { delete defaultHidden[itemName]; }
-        else { defaultHidden[itemName] = true; }
-        nm.style.textDecoration = inp.checked ? 'none' : 'line-through';
-        nm.style.color = inp.checked ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)';
+
+    // Built-in items
+    sec.items.forEach(itemName => grp.appendChild(makeOnboardItemRow(itemName, secId, false)));
+
+    // Custom extras already saved
+    const itemsList = document.createElement('div');
+    itemsList.className = 'ob-custom-items-' + secId;
+    (defaultExtras[secId] || []).forEach(name => itemsList.appendChild(makeOnboardItemRow(name, secId, true)));
+    grp.appendChild(itemsList);
+
+    // Add item row
+    const addRow = document.createElement('div');
+    addRow.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+    const addInp = document.createElement('input');
+    addInp.type = 'text';
+    addInp.placeholder = '+ Add item…';
+    addInp.style.cssText = 'flex:1;border:none;outline:none;font-size:14px;background:transparent;color:var(--color-text-primary);font-family:var(--font-sans)';
+    const addBtn = document.createElement('button');
+    addBtn.textContent = 'Add';
+    addBtn.style.cssText = 'background:none;border:none;font-size:13px;font-weight:500;color:var(--color-text-secondary);cursor:pointer;font-family:var(--font-sans);padding:0;flex-shrink:0';
+    addBtn.style.display = 'none';
+    addInp.addEventListener('input', () => { addBtn.style.display = addInp.value.trim() ? 'block' : 'none'; });
+    const doAdd = async () => {
+      const name = addInp.value.trim(); if (!name) return;
+      if (!defaultExtras[secId]) defaultExtras[secId] = [];
+      if (!defaultExtras[secId].includes(name)) {
+        defaultExtras[secId].push(name);
+        itemsList.appendChild(makeOnboardItemRow(name, secId, true));
         await saveDefaultPrefs();
-      });
-      const slider = document.createElement('span');
-      slider.className = 'onboard-slider';
-      toggle.appendChild(inp); toggle.appendChild(slider);
-      row.appendChild(nm); row.appendChild(toggle);
-      grp.appendChild(row);
-    });
+      }
+      addInp.value = ''; addBtn.style.display = 'none';
+    };
+    addBtn.addEventListener('click', doAdd);
+    addInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+    addRow.appendChild(addInp); addRow.appendChild(addBtn);
+    grp.appendChild(addRow);
+
     body.appendChild(grp);
   });
 }
