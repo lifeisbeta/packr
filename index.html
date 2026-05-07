@@ -329,6 +329,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
       <button class="ghost-btn" onclick="editCurrentTrip()">← Edit</button>
     </div>
   </div>
+  <div id="l-weather-card" style="display:none;padding:14px 16px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;margin-bottom:1.25rem;font-size:13px"></div>
   <textarea id="l-notes" placeholder="Add a note… hotel info, confirmation numbers, etc." rows="1" style="width:100%;margin-bottom:1.25rem;padding:10px 12px;font-size:14px;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;outline:none;resize:none;line-height:1.5;box-sizing:border-box;display:block;overflow:hidden" oninput="currentTripNotes=this.value;this.style.height='auto';this.style.height=this.scrollHeight+'px'" onblur="if(currentTripId)autoSave()"></textarea>
   <div id="l-warn" style="display:none"><div class="warn-bar"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Flying: remove knife from EDC pouch before leaving.</div></div>
   <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" id="p-fill" style="width:0%"></div></div><div class="progress-text" id="p-text">0 of 0 items packed</div></div>
@@ -860,6 +861,9 @@ function buildTripList(){
   tripItems=[];defs.forEach(s=>s.rows.forEach(r=>tripItems.push({sec:s.id,...r})));
   tripEditingIdx=null;tripAddOpenSec=null;tripSubAddOpenIdx=null;
   renderTripList();showScreen('s-trip-list');updateTP();
+  // Show weather on trip detail page
+  const destV=document.getElementById('f-dest').value.trim(),depV=document.getElementById('f-depart').value,retV=document.getElementById('f-return').value;
+  if(destV&&depV){fetchWeather(destV,depV,retV||depV,'l-weather-card');}else{document.getElementById('l-weather-card').style.display='none';}
 }
 
 function editCurrentTrip() {
@@ -909,6 +913,7 @@ function updateTripDetails() {
   const trip=trips.find(t=>t.id===currentTripId);if(trip)trip.name=name;
   currentTripDestination = document.getElementById('f-dest').value.trim();
   showScreen('s-trip-list');updateTP();
+  if(currentTripDestination&&d){fetchWeather(currentTripDestination,d,r||d,'l-weather-card');}else{document.getElementById('l-weather-card').style.display='none';}
   // Auto-save so the user doesn't have to hit Save Trip manually
   saveTrip();
 }
@@ -1233,6 +1238,7 @@ function renderHomeTripsList(){
         document.getElementById('l-warn').style.display=d.transport==='plane'?'block':'none';
         const notesEl=document.getElementById('l-notes');notesEl.value=currentTripNotes;notesEl.style.height='auto';notesEl.style.height=(notesEl.scrollHeight||36)+'px';
         renderTripList();showScreen('s-trip-list');updateTP();
+        if(d.destination&&d.depart){fetchWeather(d.destination,d.depart,d.returnDate||d.depart,'l-weather-card');}else{document.getElementById('l-weather-card').style.display='none';}
       }
     });
     card.appendChild(iconWrap);card.appendChild(info);card.appendChild(del);card.appendChild(dup);card.appendChild(load);list.appendChild(card);
@@ -1414,20 +1420,22 @@ function maybeWeather() {
   else document.getElementById('weather-card').style.display = 'none';
 }
 
-async function fetchWeather(city, startDate, endDate) {
-  const card = document.getElementById('weather-card');
+async function fetchWeather(city, startDate, endDate, targetId='weather-card') {
+  const card = document.getElementById(targetId);
+  if (!card) return;
   card.innerHTML = '<span style="color:var(--color-text-tertiary)">Fetching weather for ' + city + '…</span>';
   card.style.display = 'block';
   try {
     const res = await fetch('https://wttr.in/' + encodeURIComponent(city) + '?format=j1');
     if (!res.ok) throw new Error('fail');
     const data = await res.json();
-    renderWeatherCard(data, startDate, endDate, city);
+    renderWeatherCard(data, startDate, endDate, city, targetId);
   } catch(e) { card.style.display = 'none'; }
 }
 
-function renderWeatherCard(data, startDate, endDate, city) {
-  const card = document.getElementById('weather-card');
+function renderWeatherCard(data, startDate, endDate, city, targetId='weather-card') {
+  const card = document.getElementById(targetId);
+  if (!card) return;
   const forecasts = data.weather || [];
   const start = new Date(startDate + 'T00:00:00'), end = new Date(endDate + 'T00:00:00');
   let relevant = forecasts.filter(d => { const dt = new Date(d.date + 'T00:00:00'); return dt >= start && dt <= end; });
