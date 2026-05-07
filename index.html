@@ -1188,7 +1188,11 @@ function renderHomeTripsList(){
   list.innerHTML='';
   if(!trips.length){section.style.display='none';return;}
   section.style.display='block';
-  trips.forEach(trip=>{
+  const sorted=[...trips].sort((a,b)=>{
+    const da=a.data?.depart||'9999-99-99', db=b.data?.depart||'9999-99-99';
+    return da<db?-1:da>db?1:0;
+  });
+  sorted.forEach(trip=>{
     const card=document.createElement('div');card.className='trip-card';
     const d=trip.data;
     const isBP=(d.mode==='backpacking');
