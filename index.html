@@ -270,7 +270,10 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 
 <!-- TRIP SETUP -->
 <div id="s-trip-setup" class="screen">
-  <div class="wordmark" onclick="goHome()">← Packr</div>
+  <div id="setup-back" onclick="setupGoBack()" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--color-text-secondary);cursor:pointer;margin-bottom:1.5rem;padding:4px 0">
+    <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    <span id="setup-back-label">Packr</span>
+  </div>
   <h1 class="page-title">Plan your trip</h1>
   <p style="font-size:15px;color:var(--color-text-secondary);margin-bottom:2.5rem;line-height:1.6">Tell us where you're headed and we'll build your list.</p>
   <div style="position:relative;margin-bottom:1.5rem">
@@ -712,6 +715,7 @@ function showScreen(id) {
   window.scrollTo(0, 0);
 }
 function goHome() { renderHomeTripsList(); showScreen('s-home'); }
+function setupGoBack() { if(currentTripId){showScreen('s-trip-list');}else{goHome();} }
 function goTrip() {
   currentTripId = null;
   // Clear name field
@@ -736,6 +740,7 @@ function goTrip() {
   ['moto','bjj','mich'].forEach(k=>document.getElementById('ac-'+k).classList.remove('on'));
   // Reset button label
   document.getElementById('build-btn-text').textContent='Build my packing list';
+  document.getElementById('setup-back-label').textContent='Packr';
   initTripSetup();showScreen('s-trip-setup');
 }
 function goBP() { initBPPill(); renderBPLoadout(); renderInventory(); renderTemplates(); renderTrips(); showScreen('s-bp'); }
@@ -880,6 +885,7 @@ function editCurrentTrip() {
       else document.getElementById('weather-card').style.display = 'none';
     }
     document.getElementById('build-btn-text').textContent = 'Update trip details';
+    document.getElementById('setup-back-label').textContent = 'Back to trip';
   }
   showScreen('s-trip-setup');
 }
