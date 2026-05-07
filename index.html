@@ -3,7 +3,16 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Packr</title>
+<title>Packr — Smart Packing Lists</title>
+<meta name="description" content="Packr builds smart packing lists scaled to your trip length, with backpacking gear tracking, weather forecasts, and shareable lists."/>
+<meta property="og:title" content="Packr — Smart Packing Lists"/>
+<meta property="og:description" content="Build smart packing lists scaled to your trip. Backpacking gear tracking, weather forecasts, and shareable lists."/>
+<meta property="og:url" content="https://packr.jessehaynes.com"/>
+<meta property="og:type" content="website"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Packr — Smart Packing Lists"/>
+<meta name="twitter:description" content="Build smart packing lists scaled to your trip. Backpacking gear tracking, weather forecasts, and shareable lists."/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -326,6 +335,17 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
       <div class="auth-toggle">
         <span id="auth-toggle-text">Don't have an account?</span>
         <span class="auth-toggle-link" id="auth-toggle-link" onclick="switchAuthTab()"> Create one</span>
+      </div>
+      <div id="auth-forgot-wrap" style="text-align:center">
+        <span class="auth-toggle-link" style="font-size:12px;font-weight:400;color:var(--color-text-tertiary);text-decoration:none" onclick="showForgotPassword()">Forgot password?</span>
+      </div>
+      <!-- Forgot password inline panel -->
+      <div id="auth-forgot-panel" style="display:none;flex-direction:column;gap:10px">
+        <div style="font-size:14px;color:var(--color-text-secondary)">Enter your email and we'll send a reset link.</div>
+        <input class="auth-input" type="email" id="auth-reset-email" placeholder="Email" autocapitalize="none"/>
+        <div class="auth-error" id="auth-reset-msg"></div>
+        <button class="auth-btn" onclick="sendPasswordReset()">Send reset link</button>
+        <div style="text-align:center"><span class="auth-toggle-link" style="font-size:13px;font-weight:400" onclick="hideForgotPassword()">← Back to sign in</span></div>
       </div>
     </div>
   </div>
@@ -751,14 +771,6 @@ async function loadAll() {
   }
 }
 
-async function seedDefaultGear() {
-  const rows = DEFAULT_GEAR.map((g, i) => ({
-    id: uid(), name: g.name, cat: g.cat,
-    weight: g.weight, qty: g.qty, cost: g.cost, url: g.url, sort_order: i
-  }));
-  const {error} = await db.from('gear_inventory').insert(rows);
-  if (!error) gearInventory = rows;
-}
 
 async function upsertGearItem(gi) {
   showSync('syncing', 'Saving…');
@@ -920,7 +932,7 @@ async function saveTrip(btn) {
     else showSync('saved', 'Saved');
     // refresh trips list
     const {data} = await db.from('trips').select('*').order('created_at', {ascending:false});
-    trips = (data||[]).filter(r => r.id !== '__trip_defaults__').map(r => ({
+    trips = (data||[]).filter(r => r.name !== '__trip_defaults__').map(r => ({
       id: r.id, name: r.name, data: r.data,
       date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
@@ -2004,6 +2016,31 @@ async function finishOnboard(goToGear) {
 let currentUser = null;
 let _authMode = 'signin';
 
+function showForgotPassword() {
+  document.getElementById('auth-forgot-panel').style.display = 'flex';
+  document.getElementById('auth-forgot-wrap').style.display = 'none';
+  document.getElementById('auth-reset-email').value = document.getElementById('auth-email').value;
+  document.getElementById('auth-reset-msg').textContent = '';
+  document.getElementById('auth-reset-msg').style.color = '#e53e3e';
+}
+function hideForgotPassword() {
+  document.getElementById('auth-forgot-panel').style.display = 'none';
+  document.getElementById('auth-forgot-wrap').style.display = 'block';
+}
+async function sendPasswordReset() {
+  const email = document.getElementById('auth-reset-email').value.trim();
+  const msg = document.getElementById('auth-reset-msg');
+  if (!email) { msg.textContent = 'Please enter your email.'; return; }
+  const { error } = await db.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if (error) { msg.textContent = error.message; }
+  else {
+    msg.style.color = '#38a169';
+    msg.textContent = 'Reset link sent — check your inbox.';
+  }
+}
+
 function switchAuthTab() {
   _authMode = _authMode === 'signin' ? 'signup' : 'signin';
   const isSignup = _authMode === 'signup';
@@ -2014,6 +2051,8 @@ function switchAuthTab() {
   document.getElementById('auth-toggle-link').textContent = isSignup ? ' Sign in' : ' Create one';
   document.getElementById('auth-password').autocomplete = isSignup ? 'new-password' : 'current-password';
   document.getElementById('auth-error').textContent = '';
+  hideForgotPassword();
+  document.getElementById('auth-forgot-wrap').style.display = isSignup ? 'none' : 'block';
 }
 
 async function submitAuth() {
