@@ -537,14 +537,14 @@ async function loadAll() {
     if (tplErr) throw tplErr;
     templates = (tplData||[]).map(r => ({
       id: r.id, name: r.name, emoji: r.emoji, loadout: r.loadout,
-      date: new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+      date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
     // Load trips
     const {data: tripsData, error: tripsErr} = await db.from('trips').select('*').order('created_at', {ascending:false});
     if (tripsErr) throw tripsErr;
     trips = (tripsData||[]).map(r => ({
       id: r.id, name: r.name, data: r.data,
-      date: new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+      date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
     showSync('saved', 'Loaded');
   } catch(e) {
@@ -603,6 +603,7 @@ async function saveTrip() {
   showSync('syncing', 'Saving trip…');
   const tripData = {
     mode: 'trip',
+    savedDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
     items: tripItems, transport, addons, nights: computedNights,
     depart: document.getElementById('f-depart').value,
     returnDate: document.getElementById('f-return').value
@@ -617,7 +618,7 @@ async function saveTrip() {
     const {data} = await db.from('trips').select('*').order('created_at', {ascending:false});
     trips = (data||[]).map(r => ({
       id: r.id, name: r.name, data: r.data,
-      date: new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+      date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
     renderHomeTripsList();
   }
