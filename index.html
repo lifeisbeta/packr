@@ -1018,11 +1018,15 @@ function renderHomeTripsList(){
     const ic=document.createElement('canvas');iconWrap.appendChild(ic);
     setTimeout(()=>isBP?drawBackpack(ic):drawSuitcase(ic),0);
     const info=document.createElement('div');info.className='trip-card-info';
+    const dateLabel=document.createElement('div');dateLabel.style.cssText='font-size:11px;font-weight:500;letter-spacing:.03em;color:var(--color-text-tertiary);margin-bottom:2px';
+    if(!isBP&&d.depart&&d.returnDate){dateLabel.textContent=`${fmtS(d.depart)} – ${fmtS(d.returnDate)}`;}
+    else if(!isBP&&d.depart){dateLabel.textContent=fmtS(d.depart);}
+    else{dateLabel.textContent=d.mode==='backpacking'?'Backpacking':'Trip';}
     const nm=document.createElement('div');nm.className='trip-card-name';nm.textContent=trip.name;
     const meta=document.createElement('div');meta.className='trip-card-meta';
-    if(!isBP){const nights=d.nights||'?';const tr=d.transport==='plane'?'Flying':'Driving';meta.textContent=`${nights} night${nights!==1?'s':''} · ${tr} · Saved ${trip.date}`;}
-    else{meta.textContent=`Backpacking · Saved ${trip.date}`;}
-    info.appendChild(nm);info.appendChild(meta);
+    if(!isBP){const tr=d.transport==='plane'?'Flying':'Driving';meta.textContent=`${tr} · Saved ${trip.date}`;}
+    else{meta.textContent=`Saved ${trip.date}`;}
+    info.appendChild(dateLabel);info.appendChild(nm);info.appendChild(meta);
     const del=document.createElement('button');del.className='tpl-del';del.textContent='Delete';
     del.addEventListener('click',async e=>{e.stopPropagation();await deleteTripRecord(trip.id);renderHomeTripsList();});
     const load=document.createElement('button');load.className='primary-btn';load.style.cssText='font-size:12px;padding:5px 12px;flex-shrink:0';load.textContent='Load';
