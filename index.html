@@ -697,11 +697,15 @@ function initTripSetup(){
   const inp=document.getElementById('f-name'),lbl=document.getElementById('lbl-name');if(inp._fi)return;inp._fi=true;
   function sync(){const up=inp.value.length>0||document.activeElement===inp;lbl.style.top=up?'9px':'50%';lbl.style.transform=up?'translateY(0)':'translateY(-50%)';lbl.style.fontSize=up?'11px':'15px';lbl.style.color=up?'var(--color-text-secondary)':'var(--color-text-tertiary)';lbl.style.letterSpacing=up?'0.04em':'normal';}
   ['input','focus','blur'].forEach(e=>inp.addEventListener(e,sync));sync();
-  const fD=document.getElementById('f-depart'),fR=document.getElementById('f-return'),dvD=document.getElementById('dv-depart'),dvR=document.getElementById('dv-return');
-  fD.addEventListener('change',()=>{if(!fD.value)return;dvD.textContent=fmtD(fD.value);dvD.classList.remove('empty');const d=new Date(fD.value+'T00:00:00'),nx=new Date(d);nx.setDate(nx.getDate()+1);fR.min=nx.toISOString().split('T')[0];if(fR.value&&fR.value<=fD.value){fR.value='';dvR.textContent='Select date';dvR.classList.add('empty');document.getElementById('nights-badge').style.display='none';}setTimeout(()=>{if(fR.showPicker)fR.showPicker();else fR.focus();},100);calcN();});
-  fR.addEventListener('change',()=>{if(!fR.value)return;dvR.textContent=fmtD(fR.value);dvR.classList.remove('empty');calcN();});
   drawCal(document.getElementById('cal1'));drawCal(document.getElementById('cal2'));
 }
+// Date listeners set up once at load — work regardless of how setup screen is reached
+(function initDateListeners(){
+  const fD=document.getElementById('f-depart'),fR=document.getElementById('f-return'),dvD=document.getElementById('dv-depart'),dvR=document.getElementById('dv-return');
+  function onDepart(){if(!fD.value)return;dvD.textContent=fmtD(fD.value);dvD.classList.remove('empty');const d=new Date(fD.value+'T00:00:00'),nx=new Date(d);nx.setDate(nx.getDate()+1);fR.min=nx.toISOString().split('T')[0];if(fR.value&&fR.value<=fD.value){fR.value='';dvR.textContent='Select date';dvR.classList.add('empty');document.getElementById('nights-badge').style.display='none';}setTimeout(()=>{if(fR.showPicker)fR.showPicker();else fR.focus();},100);calcN();}
+  function onReturn(){if(!fR.value)return;dvR.textContent=fmtD(fR.value);dvR.classList.remove('empty');calcN();}
+  ['change','input'].forEach(ev=>{fD.addEventListener(ev,onDepart);fR.addEventListener(ev,onReturn);});
+})();
 function fmtD(v){return new Date(v+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});}
 function fmtS(v){return new Date(v+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});}
 function calcN(){const d=document.getElementById('f-depart').value,r=document.getElementById('f-return').value;const b=document.getElementById('nights-badge'),t=document.getElementById('nights-text');if(d&&r){const dep=new Date(d+'T00:00:00'),ret=new Date(r+'T00:00:00');const diff=Math.round((ret-dep)/86400000);if(diff>0){computedNights=diff;t.innerHTML=`<strong style="color:var(--color-text-primary)">${diff} night${diff!==1?'s':''}</strong>&nbsp;&nbsp;${fmtS(d)} → ${fmtS(r)}`;b.style.display='flex';}else b.style.display='none';}else b.style.display='none';}
