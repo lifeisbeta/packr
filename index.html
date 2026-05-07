@@ -277,11 +277,16 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
     <input id="f-name" type="text" autocomplete="off" style="width:100%;height:54px;padding:20px 14px 6px;font-size:15px;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:8px;outline:none;appearance:none;display:block"/>
     <label id="lbl-name" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--color-text-tertiary);pointer-events:none;transition:all 0.15s">Trip name</label>
   </div>
+  <div style="position:relative;margin-bottom:1.5rem">
+    <input id="f-dest" type="text" autocomplete="off" style="width:100%;height:54px;padding:20px 14px 6px;font-size:15px;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:8px;outline:none;appearance:none;display:block"/>
+    <label id="lbl-dest" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--color-text-tertiary);pointer-events:none;transition:all 0.15s">Where are you going?</label>
+  </div>
   <div class="field-row">
     <div class="date-field"><div class="date-field-text"><div class="date-field-label">Departure</div><div class="date-field-value empty" id="dv-depart">Select date</div></div><div class="date-field-icon"><canvas id="cal1" width="16" height="16"></canvas></div><input type="date" id="f-depart"/></div>
     <div class="date-field"><div class="date-field-text"><div class="date-field-label">Return</div><div class="date-field-value empty" id="dv-return">Select date</div></div><div class="date-field-icon"><canvas id="cal2" width="16" height="16"></canvas></div><input type="date" id="f-return"/></div>
   </div>
   <div id="nights-badge" class="nights-badge" style="display:none"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span id="nights-text"></span></div>
+  <div id="weather-card" style="display:none;padding:14px 16px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;margin-bottom:1.5rem;font-size:13px"></div>
   <div class="section-label" style="margin-top:1rem">How are you getting there?</div>
   <div style="display:inline-flex;border-radius:999px;padding:4px;gap:3px;border:0.5px solid var(--color-border-secondary);margin-bottom:2rem">
     <button id="sb-car" onclick="setTransport('car')" style="display:flex;align-items:center;gap:7px;padding:9px 22px;border-radius:999px;border:none;cursor:pointer;font-family:var(--font-sans);font-size:14px;white-space:nowrap;background:#1a1a1a;color:#fff;font-weight:500"><svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:#fff;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0"><path d="M5 17H3v-5l2.5-6h11L19 12v5h-2"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/><path d="M5 12h14"/></svg>Driving</button>
@@ -293,10 +298,21 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
     <div class="addon-card" id="ac-bjj" onclick="toggleAddon('bjj')"><div class="addon-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M9 8l-2 4h10l-2-4M7 12l-2 8M17 12l2 8M9 12l1 5h4l1-5M7 16h10"/></svg></div><div class="addon-text"><div class="addon-name">BJJ training</div><div class="addon-desc">Gi, NoGi set, gym bag</div></div><div class="addon-check"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></div></div>
     <div class="addon-card" id="ac-mich" onclick="toggleAddon('mich')"><div class="addon-icon"><svg viewBox="0 0 24 24"><path d="M12 2l2 4h5l-4 3 1.5 5L12 11l-4.5 3L9 9 5 6h5z"/><path d="M8 15l-2 5h12l-2-5"/></svg></div><div class="addon-text"><div class="addon-name">Michigan game</div><div class="addon-desc">Jersey, long sleeve, boggan, Michigan shoes</div></div><div class="addon-check"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></div></div>
   </div>
+  <div style="text-align:right;margin-bottom:1rem">
+    <button onclick="goDefaults()" style="background:none;border:none;font-size:13px;color:var(--color-text-tertiary);cursor:pointer;font-family:var(--font-sans);padding:0">Customize default items →</button>
+  </div>
   <button id="build-btn" onclick="onBuildOrUpdate()" style="width:100%;padding:16px 24px;background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:14px;font-size:15px;font-weight:500;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;justify-content:space-between" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
     <span style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--color-background-primary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg><span id="build-btn-text">Build my packing list</span></span>
     <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--color-background-primary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
   </button>
+</div>
+
+<!-- DEFAULTS MANAGEMENT -->
+<div id="s-defaults" class="screen">
+  <div class="wordmark" onclick="showScreen('s-trip-setup')">← Back</div>
+  <h1 class="page-title">Default items</h1>
+  <p style="font-size:14px;color:var(--color-text-secondary);margin-bottom:2rem;line-height:1.5">Customize what appears on every new packing list. Changes apply to all future trips.</p>
+  <div id="defaults-body"></div>
 </div>
 
 <!-- TRIP LIST -->
@@ -392,6 +408,9 @@ function showSync(state, text) {
 let transport = 'car', addons = {moto:false, bjj:false, mich:false};
 let tripItems = [], computedNights = 2, currentTripId = null, currentTripNotes = '';
 let tripEditingIdx = null, tripAddOpenSec = null, tripSubAddOpenIdx = null;
+let defaultExtras = {}; // {sectionId: ['custom item']}
+let defaultHidden = {};  // {itemName: true}
+let currentTripDestination = '';
 let dragSrc = null, dragSrcSec = null;
 let invDragSrc = null, invDragSrcCat = null;
 let invEditId = null, invAddOpenCat = null;
@@ -543,10 +562,11 @@ async function loadAll() {
     // Load trips
     const {data: tripsData, error: tripsErr} = await db.from('trips').select('*').order('created_at', {ascending:false});
     if (tripsErr) throw tripsErr;
-    trips = (tripsData||[]).map(r => ({
+    trips = (tripsData||[]).filter(r => r.id !== '__trip_defaults__').map(r => ({
       id: r.id, name: r.name, data: r.data,
       date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
+    await loadDefaultPrefs();
     showSync('saved', 'Loaded');
   } catch(e) {
     console.error('Load error:', e);
@@ -583,6 +603,22 @@ async function deleteGearItem(id) {
   else showSync('saved', 'Deleted');
 }
 
+async function loadDefaultPrefs() {
+  const {data} = await db.from('trips').select('*').eq('id', '__trip_defaults__').single();
+  if (data && data.data) {
+    defaultExtras = data.data.extras || {};
+    defaultHidden = data.data.hidden || {};
+  }
+}
+
+async function saveDefaultPrefs() {
+  await db.from('trips').upsert({
+    id: '__trip_defaults__',
+    name: '__trip_defaults__',
+    data: {extras: defaultExtras, hidden: defaultHidden}
+  });
+}
+
 async function saveTemplate(tpl) {
   showSync('syncing', 'Saving…');
   const {error} = await db.from('loadout_templates').upsert({
@@ -615,6 +651,7 @@ async function saveTrip() {
     items: tripItems, transport, addons, nights: computedNights,
     depart: document.getElementById('f-depart').value,
     returnDate: document.getElementById('f-return').value,
+    destination: document.getElementById('f-dest').value.trim(),
     notes: currentTripNotes
   };
   const id = currentTripId || uid();
@@ -625,7 +662,7 @@ async function saveTrip() {
     showSync('saved', 'Trip saved');
     // refresh trips list
     const {data} = await db.from('trips').select('*').order('created_at', {ascending:false});
-    trips = (data||[]).map(r => ({
+    trips = (data||[]).filter(r => r.id !== '__trip_defaults__').map(r => ({
       id: r.id, name: r.name, data: r.data,
       date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
@@ -687,6 +724,12 @@ function goTrip() {
   document.getElementById('dv-depart').textContent='Select date';document.getElementById('dv-depart').classList.add('empty');
   document.getElementById('dv-return').textContent='Select date';document.getElementById('dv-return').classList.add('empty');
   document.getElementById('nights-badge').style.display='none';
+  // Reset destination and weather
+  currentTripDestination = '';
+  document.getElementById('f-dest').value = '';
+  const lblD2 = document.getElementById('lbl-dest');
+  lblD2.style.top='50%';lblD2.style.transform='translateY(-50%)';lblD2.style.fontSize='15px';lblD2.style.color='var(--color-text-tertiary)';lblD2.style.letterSpacing='normal';
+  document.getElementById('weather-card').style.display = 'none';
   // Reset transport & addons
   transport='car';addons={moto:false,bjj:false,mich:false};
   setTransport('car');
@@ -748,6 +791,10 @@ function initTripSetup(){
   function sync(){const up=inp.value.length>0||document.activeElement===inp;lbl.style.top=up?'9px':'50%';lbl.style.transform=up?'translateY(0)':'translateY(-50%)';lbl.style.fontSize=up?'11px':'15px';lbl.style.color=up?'var(--color-text-secondary)':'var(--color-text-tertiary)';lbl.style.letterSpacing=up?'0.04em':'normal';}
   ['input','focus','blur'].forEach(e=>inp.addEventListener(e,sync));sync();
   drawCal(document.getElementById('cal1'));drawCal(document.getElementById('cal2'));
+  const dest = document.getElementById('f-dest'), lblD = document.getElementById('lbl-dest');
+  function syncDest() { const up = dest.value.length > 0 || document.activeElement === dest; lblD.style.top = up?'9px':'50%'; lblD.style.transform = up?'translateY(0)':'translateY(-50%)'; lblD.style.fontSize = up?'11px':'15px'; lblD.style.color = up?'var(--color-text-secondary)':'var(--color-text-tertiary)'; lblD.style.letterSpacing = up?'0.04em':'normal'; }
+  ['input','focus','blur'].forEach(e => dest.addEventListener(e, syncDest)); syncDest();
+  dest.addEventListener('blur', maybeWeather);
 }
 // Date listeners set up once at load — work regardless of how setup screen is reached
 (function initDateListeners(){
@@ -758,7 +805,7 @@ function initTripSetup(){
 })();
 function fmtD(v){return new Date(v+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});}
 function fmtS(v){return new Date(v+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});}
-function calcN(){const d=document.getElementById('f-depart').value,r=document.getElementById('f-return').value;const b=document.getElementById('nights-badge'),t=document.getElementById('nights-text');if(d&&r){const dep=new Date(d+'T00:00:00'),ret=new Date(r+'T00:00:00');const diff=Math.round((ret-dep)/86400000);if(diff>0){computedNights=diff;t.innerHTML=`<strong style="color:var(--color-text-primary)">${diff} night${diff!==1?'s':''}</strong>&nbsp;&nbsp;${fmtS(d)} → ${fmtS(r)}`;b.style.display='flex';}else b.style.display='none';}else b.style.display='none';}
+function calcN(){const d=document.getElementById('f-depart').value,r=document.getElementById('f-return').value;const b=document.getElementById('nights-badge'),t=document.getElementById('nights-text');if(d&&r){const dep=new Date(d+'T00:00:00'),ret=new Date(r+'T00:00:00');const diff=Math.round((ret-dep)/86400000);if(diff>0){computedNights=diff;t.innerHTML=`<strong style="color:var(--color-text-primary)">${diff} night${diff!==1?'s':''}</strong>&nbsp;&nbsp;${fmtS(d)} → ${fmtS(r)}`;b.style.display='flex';}else b.style.display='none';}else b.style.display='none';maybeWeather();}
 function setTransport(t){transport=t;const car=document.getElementById('sb-car'),plane=document.getElementById('sb-plane');const base='display:flex;align-items:center;gap:7px;padding:9px 22px;border-radius:999px;border:none;cursor:pointer;font-family:var(--font-sans);font-size:14px;white-space:nowrap;';if(t==='car'){car.style.cssText=base+'background:#1a1a1a;color:#fff;font-weight:500';car.querySelector('svg').style.stroke='#fff';plane.style.cssText=base+'background:transparent;color:var(--color-text-secondary)';plane.querySelector('svg').style.stroke='var(--color-text-secondary)';}else{plane.style.cssText=base+'background:#1a1a1a;color:#fff;font-weight:500';plane.querySelector('svg').style.stroke='#fff';car.style.cssText=base+'background:transparent;color:var(--color-text-secondary)';car.querySelector('svg').style.stroke='var(--color-text-secondary)';}}
 function toggleAddon(k){addons[k]=!addons[k];document.getElementById('ac-'+k).classList.toggle('on',addons[k]);}
 function scaleQ(base,n,fx){if(fx)return base;if(n<=2)return base;if(n<=4)return base+1;if(n<=6)return base+2;if(n<=9)return base+3;return base+3+Math.floor((n-9)/3);}
@@ -780,6 +827,11 @@ function buildTripList(){
     {id:'elec',rows:[mk('Laptop'),mk('iPad'),mk('Tech pouch'),mk('AirPods'),mk('Apple TV pouch')]},
     {id:'misc',rows:[mk('Corp card'),mk('Meds'),mk('Sling bag'),mk('Holster (backpack)'),mk('Travel pillow'),mk('Water bottle'),mk('Coffee mug'),mk('Snack bag',null,[{name:'Dried fruit',checked:false},{name:'Rice cakes',checked:false},{name:'Oatmeal',checked:false},{name:'Bananas',checked:false},{name:'Pretzels',checked:false},{name:'Protein powder',checked:false},{name:'Protein shaker',checked:false},{name:'Daily packs',checked:false}])]},
   ];
+  // Apply user's hidden items and custom extras
+  defs.forEach(sec => {
+    sec.rows = sec.rows.filter(r => !defaultHidden[r.name]);
+    (defaultExtras[sec.id] || []).forEach(name => sec.rows.push(mk(name)));
+  });
   if(addons.moto)defs.push({id:'moto',rows:[mk('Leather jacket'),mk('Chaps'),mk('Helmet'),mk('Gloves'),mk('Boots'),mk('GoPro cameras',3),mk('GoPro batteries')]});
   if(addons.bjj)defs.push({id:'bjj',rows:[mk('Gi'),mk('NoGi set'),mk('Gym bag')]});
   if(addons.mich)defs.push({id:'mich',rows:[mk('Jersey'),mk('Long sleeve T'),mk('Michigan boggan'),mk('Michigan shoes')]});
@@ -811,7 +863,15 @@ function editCurrentTrip() {
       setTransport(d.transport||'car');
       addons=Object.assign({moto:false,bjj:false,mich:false},d.addons||{});
       ['moto','bjj','mich'].forEach(k=>document.getElementById('ac-'+k).classList.toggle('on',addons[k]));
+      // Restore destination
+      const destInp = document.getElementById('f-dest'), lblD = document.getElementById('lbl-dest');
+      destInp.value = d.destination || '';
+      const upD = destInp.value.length > 0;
+      lblD.style.top=upD?'9px':'50%';lblD.style.transform=upD?'translateY(0)':'translateY(-50%)';lblD.style.fontSize=upD?'11px':'15px';lblD.style.color=upD?'var(--color-text-secondary)':'var(--color-text-tertiary)';lblD.style.letterSpacing=upD?'0.04em':'normal';
+      currentTripDestination = d.destination || '';
       calcN();
+      if (d.destination && d.depart) fetchWeather(d.destination, d.depart, d.returnDate || d.depart);
+      else document.getElementById('weather-card').style.display = 'none';
     }
     document.getElementById('build-btn-text').textContent = 'Update trip details';
   }
@@ -826,6 +886,7 @@ function updateTripDetails() {
   document.getElementById('l-warn').style.display=transport==='plane'?'block':'none';
   // Keep trip name in sync in the trips array (for home screen)
   const trip=trips.find(t=>t.id===currentTripId);if(trip)trip.name=name;
+  currentTripDestination = document.getElementById('f-dest').value.trim();
   showScreen('s-trip-list');updateTP();
   // Auto-save so the user doesn't have to hit Save Trip manually
   saveTrip();
@@ -1135,6 +1196,9 @@ function renderHomeTripsList(){
       else{
         tripItems=d.items||[];transport=d.transport||'car';addons=d.addons||{moto:false,bjj:false,mich:false};
         computedNights=d.nights||2;currentTripId=trip.id;currentTripNotes=d.notes||'';
+        currentTripDestination = d.destination || '';
+        const destInp2 = document.getElementById('f-dest');
+        destInp2.value = currentTripDestination;
         document.getElementById('l-title').textContent=trip.name;
         const dep=d.depart,ret=d.returnDate;const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
         document.getElementById('l-chips').innerHTML=[
@@ -1192,6 +1256,142 @@ function renderTrips(){
     });
     card.appendChild(icon);card.appendChild(info);card.appendChild(del);card.appendChild(load);list.appendChild(card);
   });
+}
+
+// ─────────────────────────────────────────────
+// DEFAULT ITEMS MANAGEMENT
+// ─────────────────────────────────────────────
+const HARDCODED_SECTIONS = {
+  wear: {label:'Wear on travel day', items:['Kuhl khakis','Camo slip-ons','Rain jacket','Belt']},
+  toi:  {label:'Toiletries', items:['Toiletry bag','Night guard']},
+  tops: {label:'Tops', items:['T-shirts','Button-downs']},
+  bot:  {label:'Bottoms', items:['Shorts','Gym shorts','Underwear','Swim trunks']},
+  socks:{label:'Socks', items:['Short socks','Long socks']},
+  shoes:{label:'Shoes', items:['Tan Altras','Flip flops']},
+  out:  {label:'Outerwear', items:['Michigan hat']},
+  elec: {label:'Electronics', items:['Laptop','iPad','Tech pouch','AirPods','Apple TV pouch']},
+  misc: {label:'Miscellaneous', items:['Corp card','Meds','Sling bag','Holster (backpack)','Travel pillow','Water bottle','Coffee mug','Snack bag']},
+};
+
+function goDefaults() { renderDefaults(); showScreen('s-defaults'); }
+
+function renderDefaults() {
+  const body = document.getElementById('defaults-body');
+  body.innerHTML = '';
+  Object.entries(HARDCODED_SECTIONS).forEach(([id, sec]) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-bottom:2rem';
+    const lbl = document.createElement('div');
+    lbl.className = 'section-label';
+    lbl.textContent = sec.label;
+    wrap.appendChild(lbl);
+    // Built-in items
+    sec.items.forEach(name => {
+      const isHid = !!defaultHidden[name];
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+      const nm = document.createElement('span');
+      nm.style.cssText = 'font-size:14px;color:' + (isHid ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)') + ';text-decoration:' + (isHid ? 'line-through' : 'none');
+      nm.textContent = name;
+      const btn = document.createElement('button');
+      btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;padding:3px 8px;border-radius:4px;' + (isHid ? 'color:var(--color-text-secondary);background:var(--color-background-secondary)' : 'color:#c0392b');
+      btn.textContent = isHid ? 'Restore' : 'Hide';
+      btn.addEventListener('click', () => {
+        if (defaultHidden[name]) delete defaultHidden[name]; else defaultHidden[name] = true;
+        saveDefaultPrefs(); renderDefaults();
+      });
+      row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
+    });
+    // Custom extras
+    (defaultExtras[id] || []).forEach(name => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+      const nm = document.createElement('span');
+      nm.style.cssText = 'font-size:14px;color:var(--color-text-primary);display:flex;align-items:center;gap:6px';
+      nm.innerHTML = name + ' <span style="font-size:11px;color:var(--color-text-tertiary);font-weight:500;background:var(--color-background-secondary);padding:2px 5px;border-radius:3px">custom</span>';
+      const btn = document.createElement('button');
+      btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;color:#c0392b;padding:3px 8px;border-radius:4px';
+      btn.textContent = 'Remove';
+      btn.addEventListener('click', () => {
+        defaultExtras[id] = (defaultExtras[id] || []).filter(n => n !== name);
+        saveDefaultPrefs(); renderDefaults();
+      });
+      row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
+    });
+    // Add input row
+    const addRow = document.createElement('div');
+    addRow.style.cssText = 'display:flex;gap:8px;margin-top:10px';
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.placeholder = 'Add a default item…';
+    inp.style.cssText = 'flex:1;padding:8px 12px;font-size:14px;font-family:var(--font-sans);border:0.5px solid var(--color-border-secondary);border-radius:8px;outline:none;background:var(--color-background-primary);color:var(--color-text-primary)';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'primary-btn'; addBtn.textContent = 'Add';
+    addBtn.style.cssText = 'background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans)';
+    function doAdd() {
+      const v = inp.value.trim(); if (!v) return;
+      if (!defaultExtras[id]) defaultExtras[id] = [];
+      if (!defaultExtras[id].includes(v)) { defaultExtras[id].push(v); saveDefaultPrefs(); renderDefaults(); }
+      else { inp.value = ''; }
+    }
+    addBtn.addEventListener('click', doAdd);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+    addRow.appendChild(inp); addRow.appendChild(addBtn); wrap.appendChild(addRow);
+    body.appendChild(wrap);
+  });
+}
+
+// ─────────────────────────────────────────────
+// WEATHER
+// ─────────────────────────────────────────────
+function maybeWeather() {
+  const city = document.getElementById('f-dest').value.trim();
+  const start = document.getElementById('f-depart').value;
+  const end = document.getElementById('f-return').value;
+  if (city && start) fetchWeather(city, start, end || start);
+  else document.getElementById('weather-card').style.display = 'none';
+}
+
+async function fetchWeather(city, startDate, endDate) {
+  const card = document.getElementById('weather-card');
+  card.innerHTML = '<span style="color:var(--color-text-tertiary)">Fetching weather for ' + city + '…</span>';
+  card.style.display = 'block';
+  try {
+    const res = await fetch('https://wttr.in/' + encodeURIComponent(city) + '?format=j1');
+    if (!res.ok) throw new Error('fail');
+    const data = await res.json();
+    renderWeatherCard(data, startDate, endDate, city);
+  } catch(e) { card.style.display = 'none'; }
+}
+
+function renderWeatherCard(data, startDate, endDate, city) {
+  const card = document.getElementById('weather-card');
+  const forecasts = data.weather || [];
+  const start = new Date(startDate + 'T00:00:00'), end = new Date(endDate + 'T00:00:00');
+  let relevant = forecasts.filter(d => { const dt = new Date(d.date + 'T00:00:00'); return dt >= start && dt <= end; });
+  if (!relevant.length) relevant = forecasts; // wttr.in only has 3 days; use what we have
+  if (!relevant.length) { card.style.display = 'none'; return; }
+  const maxF = Math.max(...relevant.map(d => parseInt(d.maxtempF)));
+  const minF = Math.min(...relevant.map(d => parseInt(d.mintempF)));
+  const codes = new Set();
+  relevant.forEach(d => (d.hourly||[]).forEach(h => codes.add(parseInt(h.weatherCode))));
+  const codesArr = [...codes];
+  const hasRain = codesArr.some(c => c >= 176 && c <= 399 && c !== 248 && c !== 260);
+  const hasSnow = codesArr.some(c => (c >= 179 && c <= 230) || (c >= 320 && c <= 395));
+  const hasStorm = codesArr.some(c => c === 200 || c === 386 || c === 389 || c === 392 || c === 395);
+  let emoji, condition;
+  if (hasStorm) { emoji = '⛈️'; condition = 'Thunderstorms expected'; }
+  else if (hasSnow) { emoji = '❄️'; condition = 'Snow expected'; }
+  else if (hasRain) { emoji = '🌧️'; condition = 'Rain in the forecast'; }
+  else if (codesArr.some(c => c === 116 || c === 119 || c === 122)) { emoji = '⛅'; condition = 'Partly cloudy'; }
+  else { emoji = '☀️'; condition = 'Looks clear'; }
+  const suggestions = [];
+  if (hasRain || hasStorm) suggestions.push('🌧️ Rain jacket already in your list — double-check it\'s packed');
+  if (hasSnow) { suggestions.push('🧥 Pack warm layers'); suggestions.push('🧤 Gloves & warm hat'); }
+  if (maxF > 85) suggestions.push('☀️ Hot trip — sunscreen & sunglasses');
+  if (minF < 45 && !hasSnow) suggestions.push('🧥 Cool nights — pack a light jacket');
+  if (minF < 32) suggestions.push('🥶 Freezing temps — consider thermal layers');
+  const displayCity = data.nearest_area?.[0]?.areaName?.[0]?.value || city;
+  card.innerHTML = `<div style="display:flex;align-items:center;gap:12px${suggestions.length ? ';margin-bottom:10px' : ''}"><span style="font-size:22px;line-height:1">${emoji}</span><div><div style="font-size:14px;font-weight:500;color:var(--color-text-primary)">${displayCity}: ${minF}–${maxF}°F</div><div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">${condition}</div></div></div>${suggestions.map(s=>`<div style="font-size:12px;color:var(--color-text-secondary);padding:4px 0 4px 34px;line-height:1.4">${s}</div>`).join('')}`;
 }
 
 // ─────────────────────────────────────────────
