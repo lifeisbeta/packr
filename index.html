@@ -235,6 +235,29 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .trip-card-info{flex:1;min-width:0}
 .trip-card-name{font-size:15px;font-weight:500;color:var(--color-text-primary)}
 .trip-card-meta{font-size:12px;color:var(--color-text-tertiary);margin-top:2px}
+
+/* ── AUTH ── */
+.auth-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:0}
+.auth-logo{font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:2.5rem}
+.auth-card{width:100%;max-width:340px;display:flex;flex-direction:column;gap:14px}
+.auth-title{font-size:24px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px;text-align:center}
+.auth-sub{font-size:14px;color:var(--color-text-secondary);text-align:center;margin-bottom:8px}
+.auth-input{width:100%;padding:13px 14px;font-size:15px;border:1px solid var(--color-border-secondary);border-radius:10px;background:var(--color-background-primary);color:var(--color-text-primary);outline:none;transition:border-color 0.15s;font-family:var(--font-sans)}
+.auth-input:focus{border-color:var(--color-text-primary)}
+.auth-btn{width:100%;padding:14px;font-size:15px;font-weight:500;background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:10px;cursor:pointer;transition:opacity 0.15s;font-family:var(--font-sans)}
+.auth-btn:hover{opacity:0.85}.auth-btn:disabled{opacity:0.5;cursor:not-allowed}
+.auth-toggle{text-align:center;font-size:13px;color:var(--color-text-secondary)}
+.auth-toggle-link{color:var(--color-text-primary);font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.auth-error{font-size:13px;color:#e53e3e;text-align:center;min-height:18px}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:4px 0}
+.auth-divider-line{flex:1;height:1px;background:var(--color-border-tertiary)}
+.auth-divider-text{font-size:12px;color:var(--color-text-tertiary)}
+
+/* ── HOME USER BAR ── */
+.home-user-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:3rem}
+.home-user-email{font-size:11px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.home-signout-btn{font-size:11px;font-weight:500;color:var(--color-text-tertiary);background:none;border:none;cursor:pointer;padding:0;letter-spacing:0.04em;text-transform:uppercase}
+.home-signout-btn:hover{color:var(--color-text-primary)}
 </style>
 </head>
 <body>
@@ -246,9 +269,36 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
   <span id="sync-text">Saving…</span>
 </div>
 
+<!-- AUTH -->
+<div id="s-auth" class="screen">
+  <div class="auth-wrap">
+    <div class="auth-logo">Packr</div>
+    <div class="auth-card">
+      <div>
+        <div class="auth-title" id="auth-title">Welcome back</div>
+        <div class="auth-sub" id="auth-sub">Sign in to your packing lists</div>
+      </div>
+      <input class="auth-input" type="email" id="auth-email" placeholder="Email" autocomplete="email" autocapitalize="none"/>
+      <input class="auth-input" type="password" id="auth-password" placeholder="Password" autocomplete="current-password"/>
+      <div class="auth-error" id="auth-error"></div>
+      <button class="auth-btn" id="auth-submit-btn" onclick="submitAuth()">Sign in</button>
+      <div class="auth-toggle">
+        <span id="auth-toggle-text">Don't have an account?</span>
+        <span class="auth-toggle-link" id="auth-toggle-link" onclick="switchAuthTab()"> Create one</span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- HOME -->
-<div id="s-home" class="screen active">
-  <div class="home-wordmark">Packr</div>
+<div id="s-home" class="screen">
+  <div class="home-user-bar">
+    <div class="home-wordmark" style="margin-bottom:0">Packr</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="home-user-email" id="home-user-email"></span>
+      <button class="home-signout-btn" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
   <p class="home-headline">What are you packing for?</p>
   <p class="home-sub">Choose a mode to get started.</p>
   <div class="home-tiles">
@@ -588,7 +638,7 @@ async function loadAll() {
     // Load trips
     const {data: tripsData, error: tripsErr} = await db.from('trips').select('*').order('created_at', {ascending:false});
     if (tripsErr) throw tripsErr;
-    trips = (tripsData||[]).filter(r => r.id !== '__trip_defaults__').map(r => ({
+    trips = (tripsData||[]).filter(r => r.name !== '__trip_defaults__').map(r => ({
       id: r.id, name: r.name, data: r.data,
       date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
@@ -629,8 +679,12 @@ async function deleteGearItem(id) {
   else showSync('saved', 'Deleted');
 }
 
+function getDefaultsId() {
+  return currentUser ? currentUser.id + '_defaults' : '__trip_defaults__';
+}
+
 async function loadDefaultPrefs() {
-  const {data} = await db.from('trips').select('*').eq('id', '__trip_defaults__').single();
+  const {data} = await db.from('trips').select('*').eq('id', getDefaultsId()).single();
   if (data && data.data) {
     defaultExtras = data.data.extras || {};
     defaultHidden = data.data.hidden || {};
@@ -638,9 +692,9 @@ async function loadDefaultPrefs() {
 }
 
 async function saveDefaultPrefs() {
+  const id = getDefaultsId();
   await db.from('trips').upsert({
-    id: '__trip_defaults__',
-    name: '__trip_defaults__',
+    id, name: '__trip_defaults__',
     data: {extras: defaultExtras, hidden: defaultHidden}
   });
 }
@@ -1083,7 +1137,7 @@ async function shareBPLoadout(btn) {
     loadout: JSON.parse(JSON.stringify(loadout))
   };
   const id = uid();
-  const {error} = await db.from('trips').upsert({id, name: loadoutName, data: shareData});
+  const {error} = await db.from('trips').upsert({id, name: loadoutName, data: shareData, is_shared: true});
   if (error) { if(btn){btn.textContent='Share';btn.disabled=false;} showSync('error','Share failed'); return; }
   const url = window.location.origin + window.location.pathname + '?share=' + id;
   if (navigator.clipboard) {
@@ -1519,8 +1573,10 @@ function renderWeatherCard(data, startDate, endDate, city, targetId='weather-car
 // ─────────────────────────────────────────────
 // SHARE
 // ─────────────────────────────────────────────
-function shareCurrentTrip(btn) {
+async function shareCurrentTrip(btn) {
   if (!currentTripId) return;
+  // Mark trip as shared so the public RLS policy allows the recipient to read it
+  await db.from('trips').update({is_shared: true}).eq('id', currentTripId);
   const url = window.location.origin + window.location.pathname + '?share=' + currentTripId;
   function flash() {
     if (btn) { const orig=btn.textContent; btn.textContent='✓ Copied!'; setTimeout(()=>btn.textContent=orig, 2000); }
@@ -1626,12 +1682,57 @@ function renderSharedTrip(row) {
 }
 
 // ─────────────────────────────────────────────
-// INIT
+// AUTH
 // ─────────────────────────────────────────────
-const _shareId = new URLSearchParams(window.location.search).get('share');
-if (_shareId) {
-  showSharedTrip(_shareId);
-} else {
+let currentUser = null;
+let _authMode = 'signin';
+
+function switchAuthTab() {
+  _authMode = _authMode === 'signin' ? 'signup' : 'signin';
+  const isSignup = _authMode === 'signup';
+  document.getElementById('auth-title').textContent = isSignup ? 'Create account' : 'Welcome back';
+  document.getElementById('auth-sub').textContent = isSignup ? 'Start packing smarter' : 'Sign in to your packing lists';
+  document.getElementById('auth-submit-btn').textContent = isSignup ? 'Create account' : 'Sign in';
+  document.getElementById('auth-toggle-text').textContent = isSignup ? 'Already have an account?' : "Don't have an account?";
+  document.getElementById('auth-toggle-link').textContent = isSignup ? ' Sign in' : ' Create one';
+  document.getElementById('auth-password').autocomplete = isSignup ? 'new-password' : 'current-password';
+  document.getElementById('auth-error').textContent = '';
+}
+
+async function submitAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const btn = document.getElementById('auth-submit-btn');
+  const errEl = document.getElementById('auth-error');
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+  btn.disabled = true;
+  btn.textContent = _authMode === 'signup' ? 'Creating account…' : 'Signing in…';
+  errEl.textContent = '';
+  let result;
+  if (_authMode === 'signup') {
+    result = await db.auth.signUp({ email, password });
+  } else {
+    result = await db.auth.signInWithPassword({ email, password });
+  }
+  if (result.error) {
+    errEl.textContent = result.error.message;
+    btn.disabled = false;
+    btn.textContent = _authMode === 'signup' ? 'Create account' : 'Sign in';
+    return;
+  }
+  currentUser = result.data.user;
+  if (_authMode === 'signup' && !result.data.session) {
+    errEl.style.color = '#38a169';
+    errEl.textContent = 'Check your email to confirm your account, then sign in.';
+    btn.disabled = false; btn.textContent = 'Sign in'; _authMode = 'signin';
+    return;
+  }
+  onAuthSuccess(currentUser);
+}
+
+function onAuthSuccess(user) {
+  currentUser = user;
+  document.getElementById('home-user-email').textContent = user.email;
   initHome();
   loadAll().then(()=>{
     renderBPLoadout();
@@ -1640,6 +1741,44 @@ if (_shareId) {
     renderHomeTripsList();
   });
 }
+
+async function signOut() {
+  await db.auth.signOut();
+  currentUser = null;
+  trips = []; gearInventory = []; templates = [];
+  loadout = {}; loadoutName = 'Untitled Loadout';
+  defaultExtras = {}; defaultHidden = {};
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-password').value = '';
+  document.getElementById('auth-error').textContent = '';
+  showScreen('s-auth');
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+(async function init() {
+  const _shareId = new URLSearchParams(window.location.search).get('share');
+  if (_shareId) {
+    // Share links work without login
+    showSharedTrip(_shareId);
+    return;
+  }
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    onAuthSuccess(session.user);
+  } else {
+    showScreen('s-auth');
+  }
+  // Listen for auth state changes (e.g. magic link, tab refocus)
+  db.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session && !currentUser) {
+      onAuthSuccess(session.user);
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+    }
+  });
+})();
 </script>
 </body>
 </html>
