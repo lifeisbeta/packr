@@ -41,12 +41,12 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .screen{display:none}.screen.active{display:block;padding:2rem 0}
 
 /* ── SYNC STATUS ── */
-.sync-bar{position:fixed;bottom:16px;right:16px;font-size:12px;padding:6px 12px;border-radius:20px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-tertiary);display:none;align-items:center;gap:6px;z-index:999;transition:opacity 0.3s}
+.sync-bar{position:fixed;top:16px;left:50%;transform:translateX(-50%);font-size:13px;font-weight:500;padding:8px 16px;border-radius:20px;background:var(--color-text-primary);color:var(--color-background-primary);display:none;align-items:center;gap:7px;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.15);white-space:nowrap;transition:opacity 0.3s}
 .sync-bar.show{display:flex}
-.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--color-text-tertiary);flex-shrink:0}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.5);flex-shrink:0}
 .sync-bar.syncing .sync-dot{background:#f59e0b;animation:pulse 1s infinite}
-.sync-bar.saved .sync-dot{background:#2d7a3a}
-.sync-bar.error .sync-dot{background:#c0392b}
+.sync-bar.saved .sync-dot{background:#4ade80}
+.sync-bar.error .sync-dot{background:#f87171}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 
 /* ── HOME ── */
@@ -343,8 +343,8 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem">
     <div style="flex:1;min-width:0"><h1 class="page-title" id="l-title">Trip</h1><div class="trip-chips" id="l-chips"></div></div>
     <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="ghost-btn" onclick="shareCurrentTrip()" style="font-size:12px;padding:6px 12px">Share</button>
-      <button class="ghost-btn" onclick="saveTrip()" style="font-size:12px;padding:6px 12px">Save</button>
+      <button class="ghost-btn" onclick="shareCurrentTrip(this)" style="font-size:12px;padding:6px 12px">Share</button>
+      <button class="ghost-btn" onclick="saveTrip(this)" style="font-size:12px;padding:6px 12px">Save</button>
       <button class="ghost-btn" onclick="editCurrentTrip()">← Edit</button>
     </div>
   </div>
@@ -666,9 +666,10 @@ function autoSave() {
   _autoSaveTimer = setTimeout(() => saveTrip(), 1500);
 }
 
-async function saveTrip() {
+async function saveTrip(btn) {
   const name = document.getElementById('l-title').textContent || 'Trip';
-  showSync('syncing', 'Saving trip…');
+  if (btn) { const orig=btn.textContent; btn.textContent='Saving…'; btn.disabled=true; setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2000); }
+  else showSync('syncing', 'Saving…');
   const tripData = {
     mode: 'trip',
     savedDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
@@ -683,7 +684,8 @@ async function saveTrip() {
   const {error} = await db.from('trips').upsert({id, name, data: tripData});
   if (error) { showSync('error', 'Save failed'); console.error(error); }
   else {
-    showSync('saved', 'Trip saved');
+    if (btn) { btn.textContent='✓ Saved'; setTimeout(()=>{btn.textContent='Save';btn.disabled=false;},1500); }
+    else showSync('saved', 'Saved');
     // refresh trips list
     const {data} = await db.from('trips').select('*').order('created_at', {ascending:false});
     trips = (data||[]).filter(r => r.id !== '__trip_defaults__').map(r => ({
@@ -1487,13 +1489,16 @@ function renderWeatherCard(data, startDate, endDate, city, targetId='weather-car
 // ─────────────────────────────────────────────
 // SHARE
 // ─────────────────────────────────────────────
-function shareCurrentTrip() {
+function shareCurrentTrip(btn) {
   if (!currentTripId) return;
   const url = window.location.origin + window.location.pathname + '?share=' + currentTripId;
+  function flash() {
+    if (btn) { const orig=btn.textContent; btn.textContent='✓ Copied!'; setTimeout(()=>btn.textContent=orig, 2000); }
+  }
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(url).then(() => showSync('saved', 'Link copied!'));
+    navigator.clipboard.writeText(url).then(flash);
   } else {
-    prompt('Copy this link to share your trip:', url);
+    prompt('Copy this link to share your trip:', url); flash();
   }
 }
 
