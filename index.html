@@ -289,6 +289,9 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
     <div class="addon-card" id="ac-bjj" onclick="toggleAddon('bjj')"><div class="addon-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M9 8l-2 4h10l-2-4M7 12l-2 8M17 12l2 8M9 12l1 5h4l1-5M7 16h10"/></svg></div><div class="addon-text"><div class="addon-name">BJJ training</div><div class="addon-desc">Gi, NoGi set, gym bag</div></div><div class="addon-check"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></div></div>
     <div class="addon-card" id="ac-mich" onclick="toggleAddon('mich')"><div class="addon-icon"><svg viewBox="0 0 24 24"><path d="M12 2l2 4h5l-4 3 1.5 5L12 11l-4.5 3L9 9 5 6h5z"/><path d="M8 15l-2 5h12l-2-5"/></svg></div><div class="addon-text"><div class="addon-name">Michigan game</div><div class="addon-desc">Jersey, long sleeve, boggan, Michigan shoes</div></div><div class="addon-check"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2"/></svg></div></div>
   </div>
+  <div style="display:flex;justify-content:center;margin-bottom:1.5rem">
+    <button class="ghost-btn" onclick="openSavedTrips('s-trip-setup')" style="font-size:13px;padding:8px 18px">🧳 My Trips</button>
+  </div>
   <button onclick="buildTripList()" style="width:100%;padding:16px 24px;background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:14px;font-size:15px;font-weight:500;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;justify-content:space-between" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
     <span style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--color-background-primary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Build my packing list</span>
     <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--color-background-primary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -301,12 +304,24 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
     <div style="flex:1;min-width:0"><h1 class="page-title" id="l-title">Trip</h1><div class="trip-chips" id="l-chips"></div></div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <button class="ghost-btn" onclick="saveTrip()" style="font-size:12px;padding:6px 12px">Save trip</button>
+      <button class="ghost-btn" onclick="openSavedTrips('s-trip-list')" style="font-size:12px;padding:6px 12px">My Trips</button>
       <button class="ghost-btn" onclick="showScreen('s-trip-setup')">← Edit</button>
     </div>
   </div>
   <div id="l-warn" style="display:none"><div class="warn-bar"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Flying: remove knife from EDC pouch before leaving.</div></div>
   <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" id="p-fill" style="width:0%"></div></div><div class="progress-text" id="p-text">0 of 0 items packed</div></div>
   <div id="l-body"></div>
+</div>
+
+<!-- SAVED TRIPS (shared screen) -->
+<div id="s-saved-trips" class="screen">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+    <h1 class="page-title" style="margin:0">My Trips</h1>
+    <button class="ghost-btn" id="saved-trips-back-btn" onclick="goBackFromSavedTrips()" style="font-size:12px;padding:6px 12px">← Back</button>
+  </div>
+  <p style="font-size:14px;color:var(--color-text-secondary);margin-bottom:1.5rem">Your saved packing lists.</p>
+  <div id="saved-trips-empty" style="text-align:center;padding:3rem 0;color:var(--color-text-tertiary);font-size:14px;display:none">No saved trips yet.<br><span style="font-size:12px;margin-top:4px;display:block">Build a trip and tap "Save trip".</span></div>
+  <div id="saved-trips-list" style="display:flex;flex-direction:column;gap:10px"></div>
 </div>
 
 <!-- BACKPACKING -->
@@ -668,7 +683,7 @@ function bpTab(tab) {
   if (tab === 'loadout') renderBPLoadout();
   if (tab === 'inventory') renderInventory();
   if (tab === 'templates') renderTemplates();
-  if (tab === 'trips') renderTrips();
+  if (tab === 'trips') { openSavedTrips('s-bp'); bpCurrentTab='loadout'; }
 }
 
 // ─────────────────────────────────────────────
@@ -996,6 +1011,41 @@ function renderTemplates(){
 // ─────────────────────────────────────────────
 // TRIPS
 // ─────────────────────────────────────────────
+let _savedTripsOrigin='s-home';
+function openSavedTrips(origin){_savedTripsOrigin=origin;renderSavedTripsScreen();showScreen('s-saved-trips');}
+function goBackFromSavedTrips(){showScreen(_savedTripsOrigin);}
+function renderSavedTripsScreen(){
+  const list=document.getElementById('saved-trips-list'),empty=document.getElementById('saved-trips-empty');list.innerHTML='';
+  if(!trips.length){list.style.display='none';empty.style.display='block';return;}
+  list.style.display='flex';empty.style.display='none';
+  trips.forEach(trip=>{
+    const card=document.createElement('div');card.className='trip-card';
+    const icon=document.createElement('div');icon.className='trip-card-icon';icon.textContent='🧳';
+    const info=document.createElement('div');info.className='trip-card-info';
+    const nm=document.createElement('div');nm.className='trip-card-name';nm.textContent=trip.name;
+    const meta=document.createElement('div');meta.className='trip-card-meta';
+    const d=trip.data;const nights=d.nights||'?';const tr=d.transport==='plane'?'Flying':'Driving';
+    meta.textContent=`${nights} night${nights!==1?'s':''} · ${tr} · Saved ${trip.date}`;
+    info.appendChild(nm);info.appendChild(meta);
+    const del=document.createElement('button');del.className='tpl-del';del.textContent='Delete';
+    del.addEventListener('click',async e=>{e.stopPropagation();await deleteTripRecord(trip.id);renderSavedTripsScreen();});
+    const load=document.createElement('button');load.className='primary-btn';load.style.cssText='font-size:12px;padding:5px 12px;flex-shrink:0';load.textContent='Load';
+    load.addEventListener('click',e=>{
+      e.stopPropagation();const d=trip.data;
+      tripItems=d.items||[];transport=d.transport||'car';addons=d.addons||{moto:false,bjj:false,mich:false};
+      computedNights=d.nights||2;currentTripId=trip.id;
+      document.getElementById('l-title').textContent=trip.name;
+      const dep=d.depart,ret=d.returnDate;const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
+      document.getElementById('l-chips').innerHTML=[
+        (d.nights||'?')+' night'+(d.nights!==1?'s':''),d.transport==='plane'?'Flying':'Driving',dr,
+        d.addons&&d.addons.moto?'Motorcycle':null,d.addons&&d.addons.bjj?'BJJ':null,d.addons&&d.addons.mich?'Michigan Game':null
+      ].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
+      document.getElementById('l-warn').style.display=d.transport==='plane'?'block':'none';
+      renderTripList();showScreen('s-trip-list');updateTP();
+    });
+    card.appendChild(icon);card.appendChild(info);card.appendChild(del);card.appendChild(load);list.appendChild(card);
+  });
+}
 function renderTrips(){
   const list=document.getElementById('trips-list'),empty=document.getElementById('trips-empty');list.innerHTML='';
   if(!trips.length){list.style.display='none';empty.style.display='block';return;}
