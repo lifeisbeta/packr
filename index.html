@@ -598,6 +598,13 @@ async function deleteTemplate(id) {
   else showSync('saved', 'Deleted');
 }
 
+let _autoSaveTimer = null;
+function autoSave() {
+  if (!currentTripId) return; // only auto-save trips that have already been saved once
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(() => saveTrip(), 1500);
+}
+
 async function saveTrip() {
   const name = document.getElementById('l-title').textContent || 'Trip';
   showSync('syncing', 'Saving trip…');
@@ -830,7 +837,7 @@ function makeTRow(item,secId){
   const handle=document.createElement('div');handle.className='drag-handle';handle.innerHTML='<span></span><span></span><span></span>';
   const check=document.createElement('div');check.className='icheck'+(isP?(state==='full'?' on':state==='partial'?' partial':''):(item.checked?' on':''));check.classList.add(isP?'is-parent':'clickable');
   const ck=document.createElement('canvas');ck.className='ck';ck.style.width='10px';ck.style.height='10px';ck.dataset.state=isP?state:(item.checked?'full':'empty');check.appendChild(ck);
-  if(!isP)check.addEventListener('click',e=>{e.stopPropagation();item.checked=!item.checked;renderTripList();});
+  if(!isP)check.addEventListener('click',e=>{e.stopPropagation();item.checked=!item.checked;renderTripList();autoSave();});
   let eb=null;if(isP){eb=document.createElement('div');eb.className='expand-btn'+(item.expanded?' open':'');const ec=document.createElement('canvas');ec.className='exp';eb.appendChild(ec);eb.addEventListener('click',e=>{e.stopPropagation();item.expanded=!item.expanded;renderTripList();});}
   const nm=document.createElement('span');nm.className='iname'+(isP?' parent-name':'')+((!isP&&item.checked)?' done':'');nm.textContent=item.name;
   nm.addEventListener('click',e=>{e.stopPropagation();tripEditingIdx=(tripEditingIdx===idx)?null:idx;renderTripList();});
@@ -850,7 +857,7 @@ function makeTRow(item,secId){
     const sl=document.createElement('div');sl.className='sub-list';
     (item.children||[]).forEach((ch,ci)=>{
       const sr=document.createElement('div');sr.className='sub-item-row';
-      const sc=document.createElement('div');sc.className='icheck-sm'+(ch.checked?' on':'');const sck=document.createElement('canvas');sck.className='ck';sck.style.width='9px';sck.style.height='9px';sck.dataset.state=ch.checked?'full':'empty';sc.appendChild(sck);sc.addEventListener('click',e=>{e.stopPropagation();ch.checked=!ch.checked;renderTripList();});
+      const sc=document.createElement('div');sc.className='icheck-sm'+(ch.checked?' on':'');const sck=document.createElement('canvas');sck.className='ck';sck.style.width='9px';sck.style.height='9px';sck.dataset.state=ch.checked?'full':'empty';sc.appendChild(sck);sc.addEventListener('click',e=>{e.stopPropagation();ch.checked=!ch.checked;renderTripList();autoSave();});
       const sn=document.createElement('span');sn.className='sub-item-name'+(ch.checked?' done':'');sn.textContent=ch.name;
       const sd2=document.createElement('button');sd2.className='del-btn';const stc=document.createElement('canvas');stc.className='tr';sd2.appendChild(stc);sd2.addEventListener('mouseenter',()=>drawTrash(stc,true));sd2.addEventListener('mouseleave',()=>drawTrash(stc,false));sd2.addEventListener('click',e=>{e.stopPropagation();item.children.splice(ci,1);if(!item.children.length){item.children=null;item.expanded=false;}renderTripList();});
       sr.appendChild(sc);sr.appendChild(sn);sr.appendChild(sd2);sl.appendChild(sr);
