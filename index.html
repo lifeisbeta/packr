@@ -319,13 +319,32 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
   <div id="defaults-body"></div>
 </div>
 
+<!-- SHARED TRIP VIEW -->
+<div id="s-share" class="screen">
+  <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:2rem">Packr</div>
+  <div id="sh-loading" style="font-size:15px;color:var(--color-text-secondary)">Loading trip…</div>
+  <div id="sh-content" style="display:none">
+    <h1 class="page-title" id="sh-title"></h1>
+    <div class="trip-chips" id="sh-chips" style="margin-bottom:1.5rem"></div>
+    <div id="sh-weather" style="display:none;padding:14px 16px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;margin-bottom:1.25rem;font-size:13px"></div>
+    <div id="sh-notes-wrap" style="display:none;margin-bottom:1.25rem"><div id="sh-notes" style="padding:10px 12px;font-size:14px;color:var(--color-text-secondary);background:var(--color-background-secondary);border-radius:10px;line-height:1.6;white-space:pre-wrap"></div></div>
+    <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" id="sh-fill" style="width:0%"></div></div><div class="progress-text" id="sh-ptext">0 of 0 items packed</div></div>
+    <div id="sh-body"></div>
+    <div style="margin-top:3rem;padding-top:1.5rem;border-top:0.5px solid var(--color-border-tertiary);text-align:center">
+      <div style="font-size:12px;color:var(--color-text-tertiary);margin-bottom:6px">Packed with</div>
+      <a href="https://lifeisbeta.github.io/packr" style="font-size:15px;font-weight:700;letter-spacing:0.08em;color:var(--color-text-primary);text-decoration:none;text-transform:uppercase">Packr</a>
+    </div>
+  </div>
+</div>
+
 <!-- TRIP LIST -->
 <div id="s-trip-list" class="screen">
   <div class="wordmark" onclick="goHome()">← Packr</div>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem">
     <div style="flex:1;min-width:0"><h1 class="page-title" id="l-title">Trip</h1><div class="trip-chips" id="l-chips"></div></div>
     <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="ghost-btn" onclick="saveTrip()" style="font-size:12px;padding:6px 12px">Save trip</button>
+      <button class="ghost-btn" onclick="shareCurrentTrip()" style="font-size:12px;padding:6px 12px">Share</button>
+      <button class="ghost-btn" onclick="saveTrip()" style="font-size:12px;padding:6px 12px">Save</button>
       <button class="ghost-btn" onclick="editCurrentTrip()">← Edit</button>
     </div>
   </div>
@@ -1466,15 +1485,99 @@ function renderWeatherCard(data, startDate, endDate, city, targetId='weather-car
 }
 
 // ─────────────────────────────────────────────
+// SHARE
+// ─────────────────────────────────────────────
+function shareCurrentTrip() {
+  if (!currentTripId) return;
+  const url = window.location.origin + window.location.pathname + '?share=' + currentTripId;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => showSync('saved', 'Link copied!'));
+  } else {
+    prompt('Copy this link to share your trip:', url);
+  }
+}
+
+async function showSharedTrip(id) {
+  showScreen('s-share');
+  try {
+    const {data, error} = await db.from('trips').select('*').eq('id', id).single();
+    if (error || !data || data.name === '__trip_defaults__') {
+      document.getElementById('sh-loading').textContent = 'Trip not found.'; return;
+    }
+    renderSharedTrip(data);
+  } catch(e) { document.getElementById('sh-loading').textContent = 'Could not load trip.'; }
+}
+
+function renderSharedTrip(row) {
+  document.getElementById('sh-loading').style.display = 'none';
+  document.getElementById('sh-content').style.display = 'block';
+  const d = row.data || {};
+  document.title = row.name + ' – Packr';
+  document.getElementById('sh-title').textContent = row.name;
+  // Chips
+  const dep=d.depart, ret=d.returnDate;
+  const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
+  document.getElementById('sh-chips').innerHTML=[
+    d.nights?d.nights+' night'+(d.nights!==1?'s':''):null,
+    d.transport==='plane'?'Flying':'Driving', dr,
+    d.addons?.moto?'Motorcycle':null, d.addons?.bjj?'BJJ':null, d.addons?.mich?'Michigan Game':null
+  ].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
+  // Weather
+  if (d.destination && d.depart) fetchWeather(d.destination, d.depart, d.returnDate||d.depart, 'sh-weather');
+  // Notes
+  if (d.notes) { document.getElementById('sh-notes').textContent=d.notes; document.getElementById('sh-notes-wrap').style.display='block'; }
+  // Progress
+  const items=d.items||[];
+  let tot=0,dn=0;
+  items.forEach(item=>{if(item.children?.length){tot+=item.children.length;dn+=item.children.filter(c=>c.checked).length;}else{tot++;if(item.checked)dn++;}});
+  const pct=tot>0?Math.round((dn/tot)*100):0;
+  document.getElementById('sh-fill').style.width=pct+'%';
+  document.getElementById('sh-ptext').textContent=dn+' of '+tot+' items packed';
+  // List
+  const body=document.getElementById('sh-body'); body.innerHTML='';
+  const secs={};
+  items.forEach(item=>{if(!secs[item.sec])secs[item.sec]=[];secs[item.sec].push(item);});
+  Object.entries(secs).forEach(([secId,secItems])=>{
+    const wrap=document.createElement('div'); wrap.style.cssText='margin-bottom:1.5rem';
+    const hdr=document.createElement('div'); hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
+    const lbl=document.createElement('div'); lbl.className='section-label'; lbl.textContent=lmap[secId]||secId;
+    let st=0,sd=0; secItems.forEach(i=>{if(i.children?.length){st+=i.children.length;sd+=i.children.filter(c=>c.checked).length;}else{st++;if(i.checked)sd++;}});
+    const cnt=document.createElement('div'); cnt.style.cssText='font-size:11px;color:var(--color-text-tertiary)'; cnt.textContent=sd+'/'+st;
+    hdr.appendChild(lbl); hdr.appendChild(cnt); wrap.appendChild(hdr);
+    secItems.forEach(item=>{
+      const row=document.createElement('div'); row.style.cssText='padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+      if(item.children?.length){
+        const nm=document.createElement('div'); nm.style.cssText='font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px'; nm.textContent=item.name; row.appendChild(nm);
+        item.children.forEach(ch=>{
+          const cr=document.createElement('div'); cr.style.cssText='display:flex;align-items:center;gap:8px;padding:3px 0 3px 10px';
+          cr.innerHTML=`<span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${ch.checked?'var(--color-text-primary)':'var(--color-border-secondary)'}"></span><span style="font-size:13px;color:${ch.checked?'var(--color-text-tertiary)':'var(--color-text-primary)'};text-decoration:${ch.checked?'line-through':'none'}">${ch.name}</span>`;
+          row.appendChild(cr);
+        });
+      } else {
+        const checked=item.checked;
+        row.innerHTML=`<div style="display:flex;align-items:center;gap:10px"><span style="width:15px;height:15px;border-radius:4px;flex-shrink:0;border:1.5px solid ${checked?'var(--color-text-primary)':'var(--color-border-secondary)'};background:${checked?'var(--color-text-primary)':'transparent'};display:flex;align-items:center;justify-content:center">${checked?'<svg viewBox="0 0 10 10" style="width:8px;height:8px;stroke:#fff;fill:none;stroke-width:2.5"><polyline points="1.5,5 4,7.5 8.5,2"/></svg>':''}</span><span style="font-size:14px;color:${checked?'var(--color-text-tertiary)':'var(--color-text-primary)'};text-decoration:${checked?'line-through':'none'};flex:1">${item.name}${item.qty>1?' ×'+item.qty:''}</span></div>`;
+      }
+      wrap.appendChild(row);
+    });
+    body.appendChild(wrap);
+  });
+}
+
+// ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
-initHome();
-loadAll().then(()=>{
-  renderBPLoadout();
-  renderInventory();
-  renderTemplates();
-  renderHomeTripsList();
-});
+const _shareId = new URLSearchParams(window.location.search).get('share');
+if (_shareId) {
+  showSharedTrip(_shareId);
+} else {
+  initHome();
+  loadAll().then(()=>{
+    renderBPLoadout();
+    renderInventory();
+    renderTemplates();
+    renderHomeTripsList();
+  });
+}
 </script>
 </body>
 </html>
