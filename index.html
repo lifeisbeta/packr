@@ -1733,6 +1733,7 @@ async function submitAuth() {
 function onAuthSuccess(user) {
   currentUser = user;
   document.getElementById('home-user-email').textContent = user.email;
+  showScreen('s-home');
   initHome();
   loadAll().then(()=>{
     renderBPLoadout();
