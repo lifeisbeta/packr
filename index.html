@@ -309,6 +309,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
       <button class="ghost-btn" onclick="editCurrentTrip()">← Edit</button>
     </div>
   </div>
+  <textarea id="l-notes" placeholder="Add a note… hotel info, confirmation numbers, etc." rows="1" style="width:100%;margin-bottom:1.25rem;padding:10px 12px;font-size:14px;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;outline:none;resize:none;line-height:1.5;box-sizing:border-box;display:block;overflow:hidden" oninput="currentTripNotes=this.value;this.style.height='auto';this.style.height=this.scrollHeight+'px'" onblur="if(currentTripId)autoSave()"></textarea>
   <div id="l-warn" style="display:none"><div class="warn-bar"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Flying: remove knife from EDC pouch before leaving.</div></div>
   <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" id="p-fill" style="width:0%"></div></div><div class="progress-text" id="p-text">0 of 0 items packed</div></div>
   <div id="l-body"></div>
@@ -389,7 +390,7 @@ function showSync(state, text) {
 // STATE
 // ─────────────────────────────────────────────
 let transport = 'car', addons = {moto:false, bjj:false, mich:false};
-let tripItems = [], computedNights = 2, currentTripId = null;
+let tripItems = [], computedNights = 2, currentTripId = null, currentTripNotes = '';
 let tripEditingIdx = null, tripAddOpenSec = null, tripSubAddOpenIdx = null;
 let dragSrc = null, dragSrcSec = null;
 let invDragSrc = null, invDragSrcCat = null;
@@ -613,7 +614,8 @@ async function saveTrip() {
     savedDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
     items: tripItems, transport, addons, nights: computedNights,
     depart: document.getElementById('f-depart').value,
-    returnDate: document.getElementById('f-return').value
+    returnDate: document.getElementById('f-return').value,
+    notes: currentTripNotes
   };
   const id = currentTripId || uid();
   currentTripId = id;
@@ -629,6 +631,28 @@ async function saveTrip() {
     }));
     renderHomeTripsList();
   }
+}
+
+async function duplicateTrip(tripId) {
+  const original = trips.find(t => t.id === tripId);
+  if (!original) return;
+  showSync('syncing', 'Duplicating…');
+  // Deep copy data, reset all checked states
+  const newData = JSON.parse(JSON.stringify(original.data));
+  newData.savedDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  newData.notes = '';
+  (newData.items||[]).forEach(item => {
+    item.checked = false;
+    if (item.children) item.children.forEach(ch => ch.checked = false);
+  });
+  const newId = uid();
+  const newName = original.name + ' (copy)';
+  const {error} = await db.from('trips').upsert({id:newId, name:newName, data:newData});
+  if (error) { showSync('error', 'Duplicate failed'); return; }
+  const {data} = await db.from('trips').select('*').order('created_at',{ascending:false});
+  trips = (data||[]).map(r=>({id:r.id,name:r.name,data:r.data,date:r.data?.savedDate||new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}));
+  showSync('saved','Duplicated');
+  renderHomeTripsList();
 }
 
 async function deleteTripRecord(id) {
@@ -759,7 +783,8 @@ function buildTripList(){
   if(addons.moto)defs.push({id:'moto',rows:[mk('Leather jacket'),mk('Chaps'),mk('Helmet'),mk('Gloves'),mk('Boots'),mk('GoPro cameras',3),mk('GoPro batteries')]});
   if(addons.bjj)defs.push({id:'bjj',rows:[mk('Gi'),mk('NoGi set'),mk('Gym bag')]});
   if(addons.mich)defs.push({id:'mich',rows:[mk('Jersey'),mk('Long sleeve T'),mk('Michigan boggan'),mk('Michigan shoes')]});
-  currentTripId = null;
+  currentTripId = null;currentTripNotes='';
+  const notesEl=document.getElementById('l-notes');notesEl.value='';notesEl.style.height='auto';
   tripItems=[];defs.forEach(s=>s.rows.forEach(r=>tripItems.push({sec:s.id,...r})));
   tripEditingIdx=null;tripAddOpenSec=null;tripSubAddOpenIdx=null;
   renderTripList();showScreen('s-trip-list');updateTP();
@@ -1101,13 +1126,15 @@ function renderHomeTripsList(){
     info.appendChild(dateLabel);info.appendChild(nm);info.appendChild(meta);
     const del=document.createElement('button');del.className='tpl-del';del.textContent='Delete';
     del.addEventListener('click',async e=>{e.stopPropagation();await deleteTripRecord(trip.id);renderHomeTripsList();});
+    const dup=document.createElement('button');dup.className='tpl-del';dup.textContent='Duplicate';dup.style.color='var(--color-text-secondary)';
+    dup.addEventListener('click',async e=>{e.stopPropagation();await duplicateTrip(trip.id);});
     const load=document.createElement('button');load.className='primary-btn';load.style.cssText='font-size:12px;padding:5px 12px;flex-shrink:0';load.textContent='Load';
     load.addEventListener('click',e=>{
       e.stopPropagation();
       if(isBP){goBP();}
       else{
         tripItems=d.items||[];transport=d.transport||'car';addons=d.addons||{moto:false,bjj:false,mich:false};
-        computedNights=d.nights||2;currentTripId=trip.id;
+        computedNights=d.nights||2;currentTripId=trip.id;currentTripNotes=d.notes||'';
         document.getElementById('l-title').textContent=trip.name;
         const dep=d.depart,ret=d.returnDate;const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
         document.getElementById('l-chips').innerHTML=[
@@ -1115,10 +1142,11 @@ function renderHomeTripsList(){
           d.addons&&d.addons.moto?'Motorcycle':null,d.addons&&d.addons.bjj?'BJJ':null,d.addons&&d.addons.mich?'Michigan Game':null
         ].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
         document.getElementById('l-warn').style.display=d.transport==='plane'?'block':'none';
+        const notesEl=document.getElementById('l-notes');notesEl.value=currentTripNotes;notesEl.style.height='auto';notesEl.style.height=(notesEl.scrollHeight||36)+'px';
         renderTripList();showScreen('s-trip-list');updateTP();
       }
     });
-    card.appendChild(iconWrap);card.appendChild(info);card.appendChild(del);card.appendChild(load);list.appendChild(card);
+    card.appendChild(iconWrap);card.appendChild(info);card.appendChild(del);card.appendChild(dup);card.appendChild(load);list.appendChild(card);
   });
 }
 function renderTrips(){
