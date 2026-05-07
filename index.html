@@ -219,7 +219,8 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 /* ── TEMPLATES ── */
 .tpl-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem}
 .tpl-card{display:flex;align-items:center;gap:12px;padding:14px 16px;border:0.5px solid var(--color-border-tertiary);border-radius:10px;background:var(--color-background-primary)}
-.tpl-icon{width:36px;height:36px;border-radius:8px;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.tpl-icon{width:36px;height:36px;border-radius:8px;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tpl-icon svg{width:20px;height:20px;stroke:var(--color-text-secondary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .tpl-info{flex:1;min-width:0}
 .tpl-name{font-size:15px;font-weight:500;color:var(--color-text-primary)}
 .tpl-meta{font-size:12px;color:var(--color-text-tertiary);margin-top:2px}
@@ -1096,8 +1097,7 @@ async function shareBPLoadout(btn) {
 async function saveAsTemplate(){
   const name=loadoutName||'Untitled';
   const copy=JSON.parse(JSON.stringify(loadout));
-  const emojis=['🏕️','⛺','🥾','🌲','🏔️','🗺️'];
-  const tpl={id:uid(),name,emoji:emojis[Math.floor(Math.random()*emojis.length)],loadout:copy,date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+  const tpl={id:uid(),name,loadout:copy,date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
   templates.push(tpl);
   await saveTemplate(tpl);
   renderTemplates();
@@ -1221,7 +1221,7 @@ function renderTemplates(){
   grid.style.display='flex';empty.style.display='none';
   templates.forEach(tpl=>{
     const card=document.createElement('div');card.className='tpl-card';
-    const icon=document.createElement('div');icon.className='tpl-icon';icon.textContent=tpl.emoji;
+    const icon=document.createElement('div');icon.className='tpl-icon';icon.innerHTML='<svg viewBox="0 0 24 24"><path d="M9 4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1H9V4z"/><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5v3a3 3 0 0 0 6 0V5"/><path d="M9 13h6M9 16h4"/></svg>';
     const info=document.createElement('div');info.className='tpl-info';
     const nm=document.createElement('div');nm.className='tpl-name';nm.textContent=tpl.name;
     const meta=document.createElement('div');meta.className='tpl-meta';
