@@ -154,7 +154,12 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .sub-add-cancel,.add-cancel,.ep-cancel{font-size:13px;color:var(--color-text-tertiary);cursor:pointer;background:none;border:none;font-family:var(--font-sans);padding:0}
 .sub-add-save,.add-save{padding:5px 14px;background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans)}
 .edit-panel{background:var(--color-background-secondary);border-left:2px solid var(--color-border-primary);border-radius:0 8px 8px 0;padding:12px 14px;margin:2px 0 4px 44px;display:flex;flex-direction:column;gap:10px}
-.ep-name-row,.ep-bottom-row{display:flex;align-items:center;gap:10px}
+.ep-name-row,.ep-bottom-row{display:flex;align-items:center;gap:8px}
+.ep-qty-stepper{display:flex;align-items:center;border:0.5px solid var(--color-border-secondary);border-radius:6px;overflow:hidden;flex-shrink:0}
+.ep-qty-btn{width:28px;height:32px;border:none;background:var(--color-background-primary);color:var(--color-text-primary);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);flex-shrink:0}
+.ep-qty-btn:active{background:var(--color-background-secondary)}
+.ep-qty-btn:disabled{opacity:0.3;cursor:default}
+.ep-qty-val{min-width:26px;text-align:center;font-size:14px;color:var(--color-text-primary);border-left:0.5px solid var(--color-border-tertiary);border-right:0.5px solid var(--color-border-tertiary);height:32px;display:flex;align-items:center;justify-content:center;padding:0 2px;font-family:var(--font-sans)}
 .ep-label{font-size:11px;font-weight:500;letter-spacing:0.04em;color:var(--color-text-tertiary);width:30px;flex-shrink:0;text-transform:uppercase}
 .ep-name{flex:1;font-size:15px;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:6px;outline:none;padding:6px 10px;min-width:0}
 .ep-name:focus{border-color:var(--color-border-primary)}
@@ -1255,13 +1260,30 @@ function makeTRow(item,secId){
 
 function makeTEP(item,idx){
   const isP=item.children!==null,panel=document.createElement('div');panel.className='edit-panel';
-  const r1=document.createElement('div');r1.className='ep-name-row';const l1=document.createElement('span');l1.className='ep-label';l1.textContent='Name';const ni=document.createElement('input');ni.className='ep-name';ni.value=item.name;r1.appendChild(l1);r1.appendChild(ni);
-  const r2=document.createElement('div');r2.className='ep-bottom-row';const l2=document.createElement('span');l2.className='ep-label';l2.textContent='Qty';const qi=document.createElement('input');qi.type='number';qi.min='1';qi.max='20';qi.value=item.qty&&item.qty>=1?item.qty:1;qi.style.cssText='width:64px;max-width:64px;min-width:64px;flex-shrink:0;font-size:14px;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:6px;outline:none;text-align:center;padding:6px 8px;display:block';if(isP){qi.disabled=true;qi.style.opacity='0.3';}
-  const gap=document.createElement('div');gap.style.cssText='flex:1';const cb=document.createElement('button');cb.className='ep-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{tripEditingIdx=null;renderTripList();});const sb=document.createElement('button');sb.className='ep-save';sb.textContent='Done';
-  r2.appendChild(l2);r2.appendChild(qi);r2.appendChild(gap);r2.appendChild(cb);r2.appendChild(sb);panel.appendChild(r1);panel.appendChild(r2);
+  // Row 1: Name + QTY stepper side by side
+  let qVal=item.qty&&item.qty>=1?item.qty:1;
+  const r1=document.createElement('div');r1.className='ep-name-row';
+  const l1=document.createElement('span');l1.className='ep-label';l1.textContent='Name';
+  const ni=document.createElement('input');ni.className='ep-name';ni.value=item.name;
+  // QTY stepper
+  const stepper=document.createElement('div');stepper.className='ep-qty-stepper';if(isP)stepper.style.opacity='0.3';
+  const qMinus=document.createElement('button');qMinus.className='ep-qty-btn';qMinus.textContent='−';qMinus.type='button';qMinus.disabled=isP;
+  const qVal_el=document.createElement('span');qVal_el.className='ep-qty-val';qVal_el.textContent=qVal;
+  const qPlus=document.createElement('button');qPlus.className='ep-qty-btn';qPlus.textContent='+';qPlus.type='button';qPlus.disabled=isP;
+  qMinus.addEventListener('click',e=>{e.stopPropagation();qVal=Math.max(1,qVal-1);qVal_el.textContent=qVal;});
+  qPlus.addEventListener('click',e=>{e.stopPropagation();qVal=Math.min(99,qVal+1);qVal_el.textContent=qVal;});
+  stepper.appendChild(qMinus);stepper.appendChild(qVal_el);stepper.appendChild(qPlus);
+  r1.appendChild(l1);r1.appendChild(ni);r1.appendChild(stepper);
+  // Row 2: Cancel + Done
+  const r2=document.createElement('div');r2.className='ep-bottom-row';
+  const gap=document.createElement('div');gap.style.cssText='flex:1';
+  const cb=document.createElement('button');cb.className='ep-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{tripEditingIdx=null;renderTripList();});
+  const sb=document.createElement('button');sb.className='ep-save';sb.textContent='Done';
+  r2.appendChild(gap);r2.appendChild(cb);r2.appendChild(sb);
+  panel.appendChild(r1);panel.appendChild(r2);
   if(!isP){const asl=document.createElement('button');asl.className='ep-add-sub';asl.innerHTML='<span style="font-size:14px;font-weight:300">+</span> Add sub-items';asl.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const v=ni.value.trim();if(v)item.name=v;item.qty=null;item.children=[];item.expanded=true;tripSubAddOpenIdx=idx;tripEditingIdx=null;renderTripList();});panel.appendChild(asl);}
-  let done=false;function save(){if(done)return;done=true;const v=ni.value.trim();if(v)item.name=v;if(!isP){const q=parseInt(qi.value);item.qty=q>=1?q:null;}tripEditingIdx=null;renderTripList();}
-  sb.addEventListener('click',save);ni.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();if(!isP)qi.focus();}else if(e.key==='Enter'){e.preventDefault();save();}else if(e.key==='Escape'){tripEditingIdx=null;renderTripList();}});qi.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();save();}else if(e.key==='Escape'){tripEditingIdx=null;renderTripList();}});setTimeout(()=>ni.focus(),30);return panel;
+  let done=false;function save(){if(done)return;done=true;const v=ni.value.trim();if(v)item.name=v;if(!isP)item.qty=qVal>=1?qVal:null;tripEditingIdx=null;renderTripList();}
+  sb.addEventListener('click',save);ni.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();save();}else if(e.key==='Escape'){tripEditingIdx=null;renderTripList();}});setTimeout(()=>ni.focus(),30);return panel;
 }
 
 function makeTAR(secId){
