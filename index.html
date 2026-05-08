@@ -135,7 +135,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .iname:hover{opacity:0.7}
 .iname.done{text-decoration:line-through;color:var(--color-text-tertiary)}
 .iname.parent-name{font-weight:500}
-.iqty{font-size:13px;color:var(--color-text-tertiary);flex-shrink:0}
+.iqty{font-size:13px;color:var(--color-text-tertiary);margin-left:4px;flex-shrink:0}
 .del-btn{width:32px;height:32px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;opacity:0;transition:opacity 0.15s;padding:0}
 .item-row:hover .del-btn,.sub-item-row:hover .del-btn,.inv-row:hover .del-btn{opacity:0.4}
 .del-btn:hover{opacity:1 !important}
@@ -1232,7 +1232,7 @@ function makeTRow(item,secId){
   del.addEventListener('mouseenter',()=>drawTrash(tc,true));del.addEventListener('mouseleave',()=>drawTrash(tc,false));
   del.addEventListener('click',e=>{e.stopPropagation();tripItems.splice(idx,1);if(tripEditingIdx===idx)tripEditingIdx=null;else if(tripEditingIdx!==null&&tripEditingIdx>idx)tripEditingIdx--;renderTripList();});
   row.appendChild(handle);row.appendChild(check);if(eb)row.appendChild(eb);row.appendChild(nm);
-  if(item.qty&&item.qty>=2&&!isP&&tripEditingIdx!==idx){const q=document.createElement('span');q.className='iqty';q.textContent='×'+item.qty;row.appendChild(q);}
+  if(item.qty&&item.qty>=2&&!isP&&tripEditingIdx!==idx){const q=document.createElement('span');q.className='iqty';q.textContent='×'+item.qty;nm.appendChild(q);}
   row.appendChild(del);
   if(!isP){
     row.addEventListener('dragstart',e=>{dragSrc=idx;dragSrcSec=secId;setTimeout(()=>row.classList.add('dragging'),0);});
