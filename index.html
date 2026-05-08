@@ -806,7 +806,8 @@ async function saveDefaultPrefs() {
   const id = getDefaultsId();
   await db.from('trips').upsert({
     id, name: '__trip_defaults__',
-    data: {extras: defaultExtras, hidden: defaultHidden}
+    data: {extras: defaultExtras, hidden: defaultHidden},
+    user_id: currentUser?.id
   });
 }
 
@@ -925,7 +926,7 @@ async function saveTrip(btn) {
   };
   const id = currentTripId || uid();
   currentTripId = id;
-  const {error} = await db.from('trips').upsert({id, name, data: tripData});
+  const {error} = await db.from('trips').upsert({id, name, data: tripData, user_id: currentUser?.id});
   if (error) { showSync('error', 'Save failed'); console.error(error); }
   else {
     if (btn) { btn.textContent='✓ Saved'; setTimeout(()=>{btn.textContent='Save';btn.disabled=false;},1500); }
@@ -954,7 +955,7 @@ async function duplicateTrip(tripId) {
   });
   const newId = uid();
   const newName = original.name + ' (copy)';
-  const {error} = await db.from('trips').upsert({id:newId, name:newName, data:newData});
+  const {error} = await db.from('trips').upsert({id:newId, name:newName, data:newData, user_id: currentUser?.id});
   if (error) { showSync('error', 'Duplicate failed'); return; }
   const {data} = await db.from('trips').select('*').order('created_at',{ascending:false});
   trips = (data||[]).map(r=>({id:r.id,name:r.name,data:r.data,date:r.data?.savedDate||new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}));
@@ -1329,7 +1330,7 @@ async function shareBPLoadout(btn) {
     loadout: JSON.parse(JSON.stringify(loadout))
   };
   const id = uid();
-  const {error} = await db.from('trips').upsert({id, name: loadoutName, data: shareData, is_shared: true});
+  const {error} = await db.from('trips').upsert({id, name: loadoutName, data: shareData, is_shared: true, user_id: currentUser?.id});
   if (error) { if(btn){btn.textContent='Share';btn.disabled=false;} showSync('error','Share failed'); return; }
   const url = window.location.origin + window.location.pathname + '?share=' + id;
   if (navigator.clipboard) {
