@@ -124,7 +124,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .icheck{width:18px;height:18px;border-radius:4px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background 0.12s,border-color 0.12s}
 .icheck.on{background:var(--color-text-primary);border-color:var(--color-text-primary)}
 .icheck.partial{border-color:var(--color-border-primary)}
-.icheck.is-parent{cursor:default}
+.icheck.is-parent{cursor:pointer}
 .icheck.clickable{cursor:pointer}
 .icheck-sm{width:16px;height:16px;border-radius:3px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background 0.12s,border-color 0.12s;cursor:pointer}
 .icheck-sm.on{background:var(--color-text-primary);border-color:var(--color-text-primary)}
@@ -1224,7 +1224,13 @@ function makeTRow(item,secId){
   const handle=document.createElement('div');handle.className='drag-handle';handle.innerHTML='<span></span><span></span><span></span>';
   const check=document.createElement('div');check.className='icheck'+(isP?(state==='full'?' on':state==='partial'?' partial':''):(item.checked?' on':''));check.classList.add(isP?'is-parent':'clickable');
   const ck=document.createElement('canvas');ck.className='ck';ck.style.width='10px';ck.style.height='10px';ck.dataset.state=isP?state:(item.checked?'full':'empty');check.appendChild(ck);
-  if(!isP)check.addEventListener('click',e=>{e.stopPropagation();item.checked=!item.checked;renderTripList();autoSave();});
+  if(isP){
+    const toggleParent=e=>{e.stopPropagation();if(e.cancelable)e.preventDefault();const allChecked=childSt(item)==='full';item.children.forEach(ch=>ch.checked=!allChecked);renderTripList();autoSave();};
+    check.addEventListener('click',toggleParent);check.addEventListener('touchend',toggleParent);
+  } else {
+    const toggleItem=e=>{e.stopPropagation();if(e.cancelable)e.preventDefault();item.checked=!item.checked;renderTripList();autoSave();};
+    check.addEventListener('click',toggleItem);check.addEventListener('touchend',toggleItem);
+  }
   let eb=null;if(isP){eb=document.createElement('div');eb.className='expand-btn'+(item.expanded?' open':'');const ec=document.createElement('canvas');ec.className='exp';eb.appendChild(ec);eb.addEventListener('click',e=>{e.stopPropagation();item.expanded=!item.expanded;renderTripList();});}
   const nm=document.createElement('span');nm.className='iname'+(isP?' parent-name':'')+((!isP&&item.checked)?' done':'');nm.textContent=item.name;
   nm.addEventListener('click',e=>{e.stopPropagation();tripEditingIdx=(tripEditingIdx===idx)?null:idx;renderTripList();});
