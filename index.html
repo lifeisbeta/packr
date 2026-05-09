@@ -619,6 +619,7 @@ let invEditId = null, invAddOpenCat = null;
 let gearInventory = [];
 let loadout = {}, loadoutName = 'Untitled Loadout';
 let templates = [], trips = [];
+let showArchived = false;
 let bpCurrentTab = 'loadout';
 
 const CAT_ORDER = ['Pack','Sleep System','Drink','Cook + Fire','Toiletries','Misc','Clothes','Winter','Food','Water'];
@@ -977,6 +978,28 @@ async function deleteTripRecord(id) {
     showSync('saved', 'Deleted');
     renderHomeTripsList();
   }
+}
+
+async function archiveTrip(id) {
+  const trip = trips.find(t => t.id === id);
+  if (!trip) return;
+  const newData = {...trip.data, archived: true};
+  const {error} = await db.from('trips').update({data: newData}).eq('id', id);
+  if (error) { showSync('error', 'Archive failed'); return; }
+  trip.data = newData;
+  showSync('saved', 'Archived');
+  renderHomeTripsList();
+}
+
+async function unarchiveTrip(id) {
+  const trip = trips.find(t => t.id === id);
+  if (!trip) return;
+  const newData = {...trip.data, archived: false};
+  const {error} = await db.from('trips').update({data: newData}).eq('id', id);
+  if (error) { showSync('error', 'Restore failed'); return; }
+  trip.data = newData;
+  showSync('saved', 'Restored');
+  renderHomeTripsList();
 }
 
 // ─────────────────────────────────────────────
@@ -1513,62 +1536,88 @@ function renderTemplates(){
 // ─────────────────────────────────────────────
 // TRIPS
 // ─────────────────────────────────────────────
+function makeTripCard(trip, isArchived){
+  const card=document.createElement('div');card.className='trip-card';
+  if(isArchived)card.style.opacity='0.65';
+  const d=trip.data;
+  const isBP=(d.mode==='backpacking');
+  const iconWrap=document.createElement('div');iconWrap.className='tile-icon-wrap';iconWrap.style.cssText='width:36px;height:36px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--color-background-secondary)';
+  const ic=document.createElement('canvas');iconWrap.appendChild(ic);
+  setTimeout(()=>isBP?drawBackpack(ic):drawSuitcase(ic),0);
+  const info=document.createElement('div');info.className='trip-card-info';
+  const dateLabel=document.createElement('div');dateLabel.style.cssText='font-size:11px;font-weight:500;letter-spacing:.03em;color:var(--color-text-tertiary);margin-bottom:2px';
+  if(!isBP&&d.depart&&d.returnDate){dateLabel.textContent=`${fmtS(d.depart)} – ${fmtS(d.returnDate)}`;}
+  else if(!isBP&&d.depart){dateLabel.textContent=fmtS(d.depart);}
+  else{dateLabel.textContent=d.mode==='backpacking'?'Backpacking':'Trip';}
+  const nm=document.createElement('div');nm.className='trip-card-name';nm.textContent=trip.name;
+  const meta=document.createElement('div');meta.className='trip-card-meta';
+  if(!isBP){const tr=d.transport==='plane'?'Flying':'Driving';meta.textContent=`${tr} · Saved ${trip.date}`;}
+  else{meta.textContent=`Saved ${trip.date}`;}
+  info.appendChild(dateLabel);info.appendChild(nm);info.appendChild(meta);
+  const del=document.createElement('button');del.className='tpl-del';del.textContent='Delete';
+  del.addEventListener('click',async e=>{e.stopPropagation();await deleteTripRecord(trip.id);});
+  const load=document.createElement('button');load.className='primary-btn';load.style.cssText='font-size:12px;padding:5px 12px;flex-shrink:0';load.textContent='Load';
+  load.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(isBP){goBP();}
+    else{
+      tripItems=d.items||[];transport=d.transport||'car';addons=d.addons||{};
+      computedNights=d.nights||2;currentTripId=trip.id;currentTripNotes=d.notes||'';
+      currentTripDestination=d.destination||'';
+      const destInp2=document.getElementById('f-dest');destInp2.value=currentTripDestination;
+      document.getElementById('l-title').textContent=trip.name;
+      const dep=d.depart,ret=d.returnDate;const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
+      const loadedAddonNames=addonDefs.filter(a=>addons[a.id]).map(a=>a.name);
+      document.getElementById('l-chips').innerHTML=[
+        (d.nights||'?')+' night'+(d.nights!==1?'s':''),d.transport==='plane'?'Flying':'Driving',dr,...loadedAddonNames
+      ].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
+      document.getElementById('l-warn').style.display=d.transport==='plane'?'block':'none';
+      const notesEl=document.getElementById('l-notes');notesEl.value=currentTripNotes;notesEl.style.height='auto';notesEl.style.height=(notesEl.scrollHeight||36)+'px';
+      renderTripList();showScreen('s-trip-list');updateTP();
+      if(d.destination&&d.depart){fetchWeather(d.destination,d.depart,d.returnDate||d.depart,'l-weather-card');}else{document.getElementById('l-weather-card').style.display='none';}
+    }
+  });
+  card.appendChild(iconWrap);card.appendChild(info);
+  if(isArchived){
+    const restore=document.createElement('button');restore.className='tpl-del';restore.textContent='Restore';restore.style.color='var(--color-text-secondary)';
+    restore.addEventListener('click',async e=>{e.stopPropagation();await unarchiveTrip(trip.id);});
+    card.appendChild(del);card.appendChild(restore);
+  } else {
+    const arch=document.createElement('button');arch.className='tpl-del';arch.textContent='Archive';arch.style.color='var(--color-text-tertiary)';
+    arch.addEventListener('click',async e=>{e.stopPropagation();await archiveTrip(trip.id);});
+    const dup=document.createElement('button');dup.className='tpl-del';dup.textContent='Duplicate';dup.style.color='var(--color-text-secondary)';
+    dup.addEventListener('click',async e=>{e.stopPropagation();await duplicateTrip(trip.id);});
+    card.appendChild(del);card.appendChild(arch);card.appendChild(dup);
+  }
+  card.appendChild(load);
+  return card;
+}
+
 function renderHomeTripsList(){
   const section=document.getElementById('home-trips-section');
   const list=document.getElementById('home-trips-list');
   list.innerHTML='';
   if(!trips.length){section.style.display='none';return;}
   section.style.display='block';
-  const sorted=[...trips].sort((a,b)=>{
-    const da=a.data?.depart||'9999-99-99', db=b.data?.depart||'9999-99-99';
-    return da<db?-1:da>db?1:0;
-  });
-  sorted.forEach(trip=>{
-    const card=document.createElement('div');card.className='trip-card';
-    const d=trip.data;
-    const isBP=(d.mode==='backpacking');
-    // Draw appropriate canvas icon
-    const iconWrap=document.createElement('div');iconWrap.className='tile-icon-wrap';iconWrap.style.cssText='width:36px;height:36px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--color-background-secondary)';
-    const ic=document.createElement('canvas');iconWrap.appendChild(ic);
-    setTimeout(()=>isBP?drawBackpack(ic):drawSuitcase(ic),0);
-    const info=document.createElement('div');info.className='trip-card-info';
-    const dateLabel=document.createElement('div');dateLabel.style.cssText='font-size:11px;font-weight:500;letter-spacing:.03em;color:var(--color-text-tertiary);margin-bottom:2px';
-    if(!isBP&&d.depart&&d.returnDate){dateLabel.textContent=`${fmtS(d.depart)} – ${fmtS(d.returnDate)}`;}
-    else if(!isBP&&d.depart){dateLabel.textContent=fmtS(d.depart);}
-    else{dateLabel.textContent=d.mode==='backpacking'?'Backpacking':'Trip';}
-    const nm=document.createElement('div');nm.className='trip-card-name';nm.textContent=trip.name;
-    const meta=document.createElement('div');meta.className='trip-card-meta';
-    if(!isBP){const tr=d.transport==='plane'?'Flying':'Driving';meta.textContent=`${tr} · Saved ${trip.date}`;}
-    else{meta.textContent=`Saved ${trip.date}`;}
-    info.appendChild(dateLabel);info.appendChild(nm);info.appendChild(meta);
-    const del=document.createElement('button');del.className='tpl-del';del.textContent='Delete';
-    del.addEventListener('click',async e=>{e.stopPropagation();await deleteTripRecord(trip.id);renderHomeTripsList();});
-    const dup=document.createElement('button');dup.className='tpl-del';dup.textContent='Duplicate';dup.style.color='var(--color-text-secondary)';
-    dup.addEventListener('click',async e=>{e.stopPropagation();await duplicateTrip(trip.id);});
-    const load=document.createElement('button');load.className='primary-btn';load.style.cssText='font-size:12px;padding:5px 12px;flex-shrink:0';load.textContent='Load';
-    load.addEventListener('click',e=>{
-      e.stopPropagation();
-      if(isBP){goBP();}
-      else{
-        tripItems=d.items||[];transport=d.transport||'car';addons=d.addons||{};
-        computedNights=d.nights||2;currentTripId=trip.id;currentTripNotes=d.notes||'';
-        currentTripDestination = d.destination || '';
-        const destInp2 = document.getElementById('f-dest');
-        destInp2.value = currentTripDestination;
-        document.getElementById('l-title').textContent=trip.name;
-        const dep=d.depart,ret=d.returnDate;const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
-        const loadedAddonNames=addonDefs.filter(a=>addons[a.id]).map(a=>a.name);
-        document.getElementById('l-chips').innerHTML=[
-          (d.nights||'?')+' night'+(d.nights!==1?'s':''),d.transport==='plane'?'Flying':'Driving',dr,...loadedAddonNames
-        ].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
-        document.getElementById('l-warn').style.display=d.transport==='plane'?'block':'none';
-        const notesEl=document.getElementById('l-notes');notesEl.value=currentTripNotes;notesEl.style.height='auto';notesEl.style.height=(notesEl.scrollHeight||36)+'px';
-        renderTripList();showScreen('s-trip-list');updateTP();
-        if(d.destination&&d.depart){fetchWeather(d.destination,d.depart,d.returnDate||d.depart,'l-weather-card');}else{document.getElementById('l-weather-card').style.display='none';}
-      }
-    });
-    card.appendChild(iconWrap);card.appendChild(info);card.appendChild(del);card.appendChild(dup);card.appendChild(load);list.appendChild(card);
-  });
+  const active=trips.filter(t=>!t.data?.archived);
+  const archived=trips.filter(t=>t.data?.archived);
+  const sortFn=(a,b)=>{const da=a.data?.depart||'9999-99-99',db=b.data?.depart||'9999-99-99';return da<db?-1:da>db?1:0;};
+  [...active].sort(sortFn).forEach(trip=>list.appendChild(makeTripCard(trip,false)));
+  if(archived.length){
+    const archSec=document.createElement('div');archSec.style.cssText='margin-top:20px';
+    const toggle=document.createElement('div');toggle.style.cssText='display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 0;color:var(--color-text-tertiary);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;user-select:none';
+    const arrow=document.createElement('span');arrow.style.cssText='display:inline-flex;transition:transform 0.2s;transform:rotate('+(showArchived?'90deg':'0deg')+')';arrow.innerHTML='<svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="M9 18l6-6-6-6"/></svg>';
+    const lbl=document.createElement('span');lbl.textContent=`Archived (${archived.length})`;
+    toggle.appendChild(arrow);toggle.appendChild(lbl);
+    toggle.addEventListener('click',()=>{showArchived=!showArchived;renderHomeTripsList();});
+    archSec.appendChild(toggle);
+    if(showArchived){
+      const archList=document.createElement('div');archList.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:8px';
+      [...archived].sort(sortFn).forEach(trip=>archList.appendChild(makeTripCard(trip,true)));
+      archSec.appendChild(archList);
+    }
+    list.appendChild(archSec);
+  }
 }
 function renderTrips(){
   const list=document.getElementById('trips-list'),empty=document.getElementById('trips-empty');list.innerHTML='';
