@@ -649,6 +649,7 @@ let defaultHidden = {};  // {itemName: true}
 let defaultRenames = {}; // {originalName: 'new name'} for built-in items
 let defaultSectionOrder = {}; // {sectionId: [{t:'b'|'c', n:name}]}
 let defaultQty = {}; // {itemName: qty} — user-set default quantities
+let defaultSubItems = {}; // {origItemName: [{name}]} — user-set sub-items; key present = override hardcoded
 let defaultEditingItem = null; // {type:'builtin'|'custom', id, name|ei}
 let defDrag = null; // active drag state for defaults screen
 let currentTripDestination = '';
@@ -847,6 +848,7 @@ async function loadDefaultPrefs() {
     defaultRenames = data.data.renames || {};
     defaultSectionOrder = data.data.sectionOrder || {};
     defaultQty = data.data.qty || {};
+    defaultSubItems = data.data.subItems || {};
     // Prune any hidden items out of sectionOrder so they don't affect drag indices
     Object.keys(defaultHidden).forEach(n => {
       Object.keys(defaultSectionOrder).forEach(sid => {
@@ -860,7 +862,7 @@ async function saveDefaultPrefs() {
   const id = getDefaultsId();
   await db.from('trips').upsert({
     id, name: '__trip_defaults__',
-    data: {extras: defaultExtras, hidden: defaultHidden, renames: defaultRenames, sectionOrder: defaultSectionOrder, qty: defaultQty},
+    data: {extras: defaultExtras, hidden: defaultHidden, renames: defaultRenames, sectionOrder: defaultSectionOrder, qty: defaultQty, subItems: defaultSubItems},
     user_id: currentUser?.id
   });
 }
@@ -1217,17 +1219,21 @@ function buildTripList(){
   document.getElementById('l-warn').style.display=transport==='plane'?'block':'none';
   // Qty hints for built-in scalable items (user overrides via defaultQty take priority)
   const qHints={'T-shirts':scaleQ(2,n),'Button-down shirts':scaleQ(1,n),'Pants':scaleQ(1,n),'Shorts':scaleQ(1,n),'Underwear':scaleQ(2,n),'Swim suit':scaleQ(1,n,true),'Socks':scaleQ(2,n)};
-  // Sub-items for toiletry bag
-  const subItems={'Toiletry bag':[{name:'Toothbrush',checked:false},{name:'Toothpaste',checked:false},{name:'Deodorant',checked:false},{name:'Face wash',checked:false},{name:'Shampoo',checked:false}]};
-  const mk=(nm,q,ch)=>({name:defaultRenames[nm]||nm,qty:q||null,checked:false,children:ch||null,expanded:!!ch});
+  // Hardcoded sub-items (used as fallback if user hasn't customised)
+  const hardcodedSubs={'Toiletry bag':[{name:'Toothbrush'},{name:'Toothpaste'},{name:'Deodorant'},{name:'Face wash'},{name:'Shampoo'}]};
+  const mk=(nm,q,ch)=>({name:defaultRenames[nm]||nm,qty:q||null,checked:false,children:ch?ch.map(s=>({name:s.name,checked:false})):null,expanded:!!ch});
   const defs=Object.keys(HARDCODED_SECTIONS).map(id=>({
     id,
     rows: getSectionOrder(id)
       .filter(e=>e.t==='b'?!defaultHidden[e.n]:true)
       .map(e=>{
-        const dq = defaultQty[e.n]; // user-set qty override (keyed by original name)
+        const dq = defaultQty[e.n];
         const q = dq != null ? dq : (qHints[e.n]||null);
-        return mk(e.n, q, e.t==='b'?subItems[e.n]||null:null);
+        // defaultSubItems key present = user override (even empty []); absent = use hardcoded
+        const subs = Object.prototype.hasOwnProperty.call(defaultSubItems, e.n)
+          ? (defaultSubItems[e.n].length ? defaultSubItems[e.n] : null)
+          : (hardcodedSubs[e.n] || null);
+        return mk(e.n, q, subs);
       })
   }));
   // Dynamic add-ons
@@ -1808,8 +1814,15 @@ function goSettings() {
 }
 function goDefaults() { renderDefaults(); showScreen('s-defaults'); }
 
-function makeDefaultEditPanel(currentVal, currentQty, onSave, onCancel) {
-  // onSave(name, qty)  qty=null means "no override"
+function makeDefaultEditPanel(origName, currentVal, currentQty, onSave, onCancel) {
+  // onSave(name, qty) — sub-items are written to defaultSubItems directly
+  const hardcodedSubs = {'Toiletry bag':[{name:'Toothbrush'},{name:'Toothpaste'},{name:'Deodorant'},{name:'Face wash'},{name:'Shampoo'}]};
+  // Working copy of sub-items for this session
+  let pendingSubs = Object.prototype.hasOwnProperty.call(defaultSubItems, origName)
+    ? defaultSubItems[origName].map(s=>({...s}))
+    : (hardcodedSubs[origName] ? hardcodedSubs[origName].map(s=>({...s})) : null);
+  // null = item has no sub-items; [] = user cleared all; [{name}...] = has sub-items
+
   const panel = document.createElement('div');
   panel.className = 'edit-panel';
   panel.style.margin = '0 0 4px 0';
@@ -1835,6 +1848,52 @@ function makeDefaultEditPanel(currentVal, currentQty, onSave, onCancel) {
   stepper.appendChild(qMinus); stepper.appendChild(qValEl); stepper.appendChild(qPlus);
   r2.appendChild(l2); r2.appendChild(stepper);
 
+  // Sub-items section
+  const subSec = document.createElement('div');
+  subSec.style.cssText = 'border-top:0.5px solid var(--color-border-tertiary);padding-top:10px;margin-top:2px';
+
+  function renderSubSec() {
+    subSec.innerHTML = '';
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:8px';
+    hdr.textContent = 'Sub-items';
+    subSec.appendChild(hdr);
+
+    if (pendingSubs && pendingSubs.length) {
+      pendingSubs.forEach((s, si) => {
+        const sr = document.createElement('div');
+        sr.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+        const sn = document.createElement('span');
+        sn.style.cssText = 'flex:1;font-size:13px;color:var(--color-text-primary)';
+        sn.textContent = s.name;
+        const rm = document.createElement('button'); rm.type = 'button';
+        rm.style.cssText = 'background:none;border:none;cursor:pointer;font-size:12px;color:#c0392b;padding:2px 6px;font-family:var(--font-sans)';
+        rm.textContent = '×';
+        rm.addEventListener('click', () => { pendingSubs.splice(si, 1); renderSubSec(); });
+        sr.appendChild(sn); sr.appendChild(rm); subSec.appendChild(sr);
+      });
+    }
+
+    // Add sub-item row
+    const addRow = document.createElement('div');
+    addRow.style.cssText = 'display:flex;gap:6px;margin-top:8px';
+    const inp = document.createElement('input'); inp.type = 'text';
+    inp.placeholder = 'Add sub-item…';
+    inp.style.cssText = 'flex:1;padding:6px 10px;font-size:13px;font-family:var(--font-sans);border:0.5px solid var(--color-border-secondary);border-radius:6px;outline:none;background:var(--color-background-primary);color:var(--color-text-primary)';
+    const addBtn = document.createElement('button'); addBtn.type = 'button';
+    addBtn.style.cssText = 'background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font-sans);flex-shrink:0';
+    addBtn.textContent = 'Add';
+    function doAddSub() {
+      const v = inp.value.trim(); if (!v) return;
+      if (!pendingSubs) pendingSubs = [];
+      pendingSubs.push({name: v}); inp.value = ''; renderSubSec();
+    }
+    addBtn.addEventListener('click', doAddSub);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAddSub(); } });
+    addRow.appendChild(inp); addRow.appendChild(addBtn); subSec.appendChild(addRow);
+  }
+  renderSubSec();
+
   // Row 3: Cancel / Done
   const r3 = document.createElement('div'); r3.className = 'ep-bottom-row';
   const gap = document.createElement('div'); gap.style.flex = '1';
@@ -1842,9 +1901,16 @@ function makeDefaultEditPanel(currentVal, currentQty, onSave, onCancel) {
   const sb = document.createElement('button'); sb.className = 'ep-save'; sb.textContent = 'Done'; sb.type = 'button';
   r3.appendChild(gap); r3.appendChild(cb); r3.appendChild(sb);
 
-  panel.appendChild(r1); panel.appendChild(r2); panel.appendChild(r3);
+  panel.appendChild(r1); panel.appendChild(r2); panel.appendChild(subSec); panel.appendChild(r3);
   let done = false;
-  function save() { if (done) return; done = true; const v = ni.value.trim(); if (v) onSave(v, qVal); else onCancel(); }
+  function save() {
+    if (done) return; done = true;
+    const v = ni.value.trim(); if (!v) { onCancel(); return; }
+    // Commit sub-items
+    if (pendingSubs !== null) defaultSubItems[origName] = pendingSubs;
+    else delete defaultSubItems[origName];
+    onSave(v, qVal);
+  }
   cb.addEventListener('click', () => { if (!done) { done = true; onCancel(); } });
   sb.addEventListener('click', save);
   ni.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } else if (e.key === 'Escape') { if (!done) { done = true; onCancel(); } } });
@@ -1986,11 +2052,10 @@ function renderDefaults() {
       rowsWrap.appendChild(row);
 
       if (isEditing) {
-        rowsWrap.appendChild(makeDefaultEditPanel(displayName, curQty,
+        rowsWrap.appendChild(makeDefaultEditPanel(origName, displayName, curQty,
           (v, q) => {
             if (isBuiltin) { if(v!==origName)defaultRenames[origName]=v; else delete defaultRenames[origName]; }
             else { defaultExtras[id]=(defaultExtras[id]||[]).map(n=>n===origName?v:n); order[oi]={t:'c',n:v}; defaultSectionOrder[id]=order; }
-            // Save qty override (keyed by original name for builtins, display name for custom)
             if (q != null && q >= 1) defaultQty[origName] = q; else delete defaultQty[origName];
             defaultEditingItem=null; saveDefaultPrefs(); renderDefaults();
           },
