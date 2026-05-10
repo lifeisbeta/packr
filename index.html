@@ -126,7 +126,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .def-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary);position:relative;user-select:none}
 .def-row.shifting{transition:transform 0.12s}
 .def-row.dragging{border-radius:8px;border-bottom-color:transparent;z-index:50;transition:none;box-shadow:0 4px 16px rgba(0,0,0,0.12)}
-.def-drag-handle{width:22px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;cursor:grab;flex-shrink:0;opacity:0.2;padding:6px 2px;touch-action:none;-webkit-touch-callout:none}
+.def-drag-handle{width:22px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;cursor:grab;flex-shrink:0;opacity:0.2;padding:6px 2px;touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .def-drag-handle:hover{opacity:0.55}
 .def-row.dragging .def-drag-handle{cursor:grabbing;opacity:0.7}
 .def-drag-handle span{display:block;width:12px;height:1.5px;background:var(--color-text-primary);border-radius:2px}
@@ -1967,6 +1967,7 @@ function renderDefaults() {
       handle.innerHTML = '<span></span><span></span><span></span>';
 
       // Pointer-event drag logic
+      handle.addEventListener('mousedown', e => e.preventDefault());
       handle.addEventListener('pointerdown', e => {
         if (defaultEditingItem) return; // don't drag while editing
         e.preventDefault();
