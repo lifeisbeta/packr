@@ -13,7 +13,6 @@
 <meta name="twitter:title" content="Packr — Smart Packing Lists"/>
 <meta name="twitter:description" content="Build smart packing lists scaled to your trip. Backpacking gear tracking, weather forecasts, and shareable lists."/>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --color-text-primary:#1a1a1a;
@@ -542,7 +541,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
     <div id="sh-body"></div>
     <div style="margin-top:3rem;padding-top:1.5rem;border-top:0.5px solid var(--color-border-tertiary);text-align:center">
       <div style="font-size:12px;color:var(--color-text-tertiary);margin-bottom:6px">Packed with</div>
-      <a href="https://lifeisbeta.github.io/packr" style="font-size:15px;font-weight:700;letter-spacing:0.08em;color:var(--color-text-primary);text-decoration:none;text-transform:uppercase">Packr</a>
+      <a href="https://packr.jessehaynes.com" style="font-size:15px;font-weight:700;letter-spacing:0.08em;color:var(--color-text-primary);text-decoration:none;text-transform:uppercase">Packr</a>
     </div>
   </div>
 </div>
@@ -618,11 +617,19 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 
 <script>
 // ─────────────────────────────────────────────
-// SUPABASE
+// PHP API
 // ─────────────────────────────────────────────
-const SUPABASE_URL = 'https://qrywxusokbgvvzzvcrbd.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyeXd4dXNva2JndnZ6enZjcmJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NTA1ODAsImV4cCI6MjA5MzQyNjU4MH0.5COZ2VFIcNF3vb6CIfRjtJxTRIAUdXG6KjTRgd81j3o';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+async function api(action, payload = {}) {
+  const res = await fetch('api.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify({action, ...payload})
+  });
+  const json = await res.json();
+  if (!res.ok) return {error: json.error || 'Request failed'};
+  return json;
+}
 
 // ── SYNC STATUS ──
 let syncTimer = null;
@@ -777,36 +784,36 @@ const DEFAULT_GEAR = [
 ];
 
 // ─────────────────────────────────────────────
-// SUPABASE OPERATIONS
+// API OPERATIONS
 // ─────────────────────────────────────────────
 async function loadAll() {
   showSync('syncing', 'Loading…');
   try {
     // Load gear inventory
-    const {data: gearData, error: gearErr} = await db.from('gear_inventory').select('*').order('sort_order');
-    if (gearErr) throw gearErr;
+    const gearData = await api('gear_list');
+    if (gearData.error) throw new Error(gearData.error);
     gearInventory = (gearData||[]).map(r => ({
       id: r.id, name: r.name, cat: r.cat,
       weight: parseFloat(r.weight)||0, qty: parseInt(r.qty)||1,
       cost: parseFloat(r.cost)||0, url: r.url||''
     }));
     // Load templates
-    const {data: tplData, error: tplErr} = await db.from('loadout_templates').select('*').order('created_at');
-    if (tplErr) throw tplErr;
+    const tplData = await api('loadout_list');
+    if (tplData.error) throw new Error(tplData.error);
     templates = (tplData||[]).map(r => ({
       id: r.id, name: r.name, emoji: r.emoji, loadout: r.loadout,
-      date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+      date: new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
     // Load trips
-    const {data: tripsData, error: tripsErr} = await db.from('trips').select('*').order('created_at', {ascending:false});
-    if (tripsErr) throw tripsErr;
-    trips = (tripsData||[]).filter(r => r.name !== '__trip_defaults__').map(r => ({
+    const tripsData = await api('trips_list');
+    if (tripsData.error) throw new Error(tripsData.error);
+    trips = (tripsData||[]).map(r => ({
       id: r.id, name: r.name, data: r.data,
       date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
     // Load add-on definitions
-    const {data: addonData} = await db.from('addons').select('*').order('sort_order');
-    addonDefs = (addonData||[]).map(r=>({id:r.id,name:r.name,description:r.description||'',items:r.items||[]}));
+    const addonData = await api('addons_list');
+    addonDefs = (addonData.error ? [] : addonData).map(r=>({id:r.id,name:r.name,description:r.description||'',items:r.items||[]}));
     await loadDefaultPrefs();
     showSync('saved', 'Loaded');
   } catch(e) {
@@ -820,35 +827,31 @@ async function loadAll() {
 
 async function upsertGearItem(gi) {
   showSync('syncing', 'Saving…');
-  const {error} = await db.from('gear_inventory').upsert({
+  const r = await api('gear_save', {
     id: gi.id, name: gi.name, cat: gi.cat,
     weight: gi.weight, qty: gi.qty, cost: gi.cost, url: gi.url,
     sort_order: gearInventory.indexOf(gi)
   });
-  if (error) { showSync('error', 'Save failed'); console.error(error); }
+  if (r.error) { showSync('error', 'Save failed'); console.error(r.error); }
   else showSync('saved', 'Saved');
 }
 
 async function deleteGearItem(id) {
   showSync('syncing', 'Deleting…');
-  const {error} = await db.from('gear_inventory').delete().eq('id', id);
-  if (error) { showSync('error', 'Delete failed'); console.error(error); }
+  const r = await api('gear_delete', {id});
+  if (r.error) { showSync('error', 'Delete failed'); console.error(r.error); }
   else showSync('saved', 'Deleted');
 }
 
-function getDefaultsId() {
-  return currentUser ? currentUser.id + '_defaults' : '__trip_defaults__';
-}
-
 async function loadDefaultPrefs() {
-  const {data} = await db.from('trips').select('*').eq('id', getDefaultsId()).single();
-  if (data && data.data) {
-    defaultExtras = data.data.extras || {};
-    defaultHidden = data.data.hidden || {};
-    defaultRenames = data.data.renames || {};
-    defaultSectionOrder = data.data.sectionOrder || {};
-    defaultQty = data.data.qty || {};
-    defaultSubItems = data.data.subItems || {};
+  const data = await api('defaults_get');
+  if (data && !data.error) {
+    defaultExtras = data.extras || {};
+    defaultHidden = data.hidden || {};
+    defaultRenames = data.renames || {};
+    defaultSectionOrder = data.sectionOrder || {};
+    defaultQty = data.qty || {};
+    defaultSubItems = data.subItems || {};
     // Prune any hidden items out of sectionOrder so they don't affect drag indices
     Object.keys(defaultHidden).forEach(n => {
       Object.keys(defaultSectionOrder).forEach(sid => {
@@ -859,12 +862,7 @@ async function loadDefaultPrefs() {
 }
 
 async function saveDefaultPrefs() {
-  const id = getDefaultsId();
-  await db.from('trips').upsert({
-    id, name: '__trip_defaults__',
-    data: {extras: defaultExtras, hidden: defaultHidden, renames: defaultRenames, sectionOrder: defaultSectionOrder, qty: defaultQty, subItems: defaultSubItems},
-    user_id: currentUser?.id
-  });
+  await api('defaults_save', {data: {extras: defaultExtras, hidden: defaultHidden, renames: defaultRenames, sectionOrder: defaultSectionOrder, qty: defaultQty, subItems: defaultSubItems}});
 }
 
 // Returns the unified ordered item list for a section, creating it if needed
@@ -881,14 +879,14 @@ function getSectionOrder(id) {
 
 // ── ADDON CRUD ──
 async function saveAddonDef(def) {
-  await db.from('addons').upsert({
+  await api('addon_save', {
     id: def.id, name: def.name, description: def.description,
     items: def.items, sort_order: addonDefs.indexOf(def)
   });
 }
 async function deleteAddonDef(id) {
   addonDefs = addonDefs.filter(a => a.id !== id);
-  await db.from('addons').delete().eq('id', id);
+  await api('addon_delete', {id});
   renderAddonToggles();
 }
 
@@ -958,17 +956,17 @@ function renderAddonToggles() {
 
 async function saveTemplate(tpl) {
   showSync('syncing', 'Saving…');
-  const {error} = await db.from('loadout_templates').upsert({
-    id: tpl.id, name: tpl.name, emoji: tpl.emoji, loadout: tpl.loadout
+  const r = await api('loadout_save', {
+    id: tpl.id, name: tpl.name, emoji: tpl.emoji || '🏕️', loadout: tpl.loadout
   });
-  if (error) { showSync('error', 'Save failed'); console.error(error); }
+  if (r.error) { showSync('error', 'Save failed'); console.error(r.error); }
   else showSync('saved', 'Template saved');
 }
 
 async function deleteTemplate(id) {
   showSync('syncing', 'Deleting…');
-  const {error} = await db.from('loadout_templates').delete().eq('id', id);
-  if (error) { showSync('error', 'Delete failed'); console.error(error); }
+  const r = await api('loadout_delete', {id});
+  if (r.error) { showSync('error', 'Delete failed'); console.error(r.error); }
   else showSync('saved', 'Deleted');
 }
 
@@ -994,14 +992,14 @@ async function saveTrip(btn) {
   };
   const id = currentTripId || uid();
   currentTripId = id;
-  const {error} = await db.from('trips').upsert({id, name, data: tripData, user_id: currentUser?.id});
-  if (error) { showSync('error', 'Save failed'); console.error(error); }
+  const r = await api('trip_save', {id, name, data: tripData});
+  if (r.error) { showSync('error', 'Save failed'); console.error(r.error); }
   else {
     if (btn) { btn.textContent='✓ Saved'; setTimeout(()=>{btn.textContent='Save';btn.disabled=false;},1500); }
     else showSync('saved', 'Saved');
     // refresh trips list
-    const {data} = await db.from('trips').select('*').order('created_at', {ascending:false});
-    trips = (data||[]).filter(r => r.name !== '__trip_defaults__').map(r => ({
+    const data = await api('trips_list');
+    trips = (data.error ? [] : data).map(r => ({
       id: r.id, name: r.name, data: r.data,
       date: r.data?.savedDate || new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
     }));
@@ -1023,18 +1021,18 @@ async function duplicateTrip(tripId) {
   });
   const newId = uid();
   const newName = original.name + ' (copy)';
-  const {error} = await db.from('trips').upsert({id:newId, name:newName, data:newData, user_id: currentUser?.id});
-  if (error) { showSync('error', 'Duplicate failed'); return; }
-  const {data} = await db.from('trips').select('*').order('created_at',{ascending:false});
-  trips = (data||[]).map(r=>({id:r.id,name:r.name,data:r.data,date:r.data?.savedDate||new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}));
+  const r = await api('trip_save', {id:newId, name:newName, data:newData});
+  if (r.error) { showSync('error', 'Duplicate failed'); return; }
+  const data = await api('trips_list');
+  trips = (data.error ? [] : data).map(r=>({id:r.id,name:r.name,data:r.data,date:r.data?.savedDate||new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}));
   showSync('saved','Duplicated');
   renderHomeTripsList();
 }
 
 async function deleteTripRecord(id) {
   showSync('syncing', 'Deleting…');
-  const {error} = await db.from('trips').delete().eq('id', id);
-  if (error) { showSync('error', 'Delete failed'); }
+  const r = await api('trip_delete', {id});
+  if (r.error) { showSync('error', 'Delete failed'); }
   else {
     trips = trips.filter(t => t.id !== id);
     showSync('saved', 'Deleted');
@@ -1046,8 +1044,8 @@ async function archiveTrip(id) {
   const trip = trips.find(t => t.id === id);
   if (!trip) return;
   const newData = {...trip.data, archived: true};
-  const {error} = await db.from('trips').update({data: newData}).eq('id', id);
-  if (error) { showSync('error', 'Archive failed'); return; }
+  const r = await api('trip_save', {id, name: trip.name, data: newData});
+  if (r.error) { showSync('error', 'Archive failed'); return; }
   trip.data = newData;
   showSync('saved', 'Archived');
   renderHomeTripsList();
@@ -1057,8 +1055,8 @@ async function unarchiveTrip(id) {
   const trip = trips.find(t => t.id === id);
   if (!trip) return;
   const newData = {...trip.data, archived: false};
-  const {error} = await db.from('trips').update({data: newData}).eq('id', id);
-  if (error) { showSync('error', 'Restore failed'); return; }
+  const r = await api('trip_save', {id, name: trip.name, data: newData});
+  if (r.error) { showSync('error', 'Restore failed'); return; }
   trip.data = newData;
   showSync('saved', 'Restored');
   renderHomeTripsList();
@@ -1507,8 +1505,8 @@ async function shareBPLoadout(btn) {
     loadout: JSON.parse(JSON.stringify(loadout))
   };
   const id = uid();
-  const {error} = await db.from('trips').upsert({id, name: loadoutName, data: shareData, is_shared: true, user_id: currentUser?.id});
-  if (error) { if(btn){btn.textContent='Share';btn.disabled=false;} showSync('error','Share failed'); return; }
+  const r = await api('trip_save', {id, name: loadoutName, data: shareData, is_shared: 1});
+  if (r.error) { if(btn){btn.textContent='Share';btn.disabled=false;} showSync('error','Share failed'); return; }
   const url = window.location.origin + window.location.pathname + '?share=' + id;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(url).then(()=>{if(btn){btn.textContent='✓ Copied!';setTimeout(()=>{btn.textContent='Share';btn.disabled=false;},2000);}});
@@ -2185,8 +2183,7 @@ function renderWeatherCard(data, startDate, endDate, city, targetId='weather-car
 // ─────────────────────────────────────────────
 async function shareCurrentTrip(btn) {
   if (!currentTripId) return;
-  // Mark trip as shared so the public RLS policy allows the recipient to read it
-  await db.from('trips').update({is_shared: true}).eq('id', currentTripId);
+  await api('trip_share', {id: currentTripId});
   const url = window.location.origin + window.location.pathname + '?share=' + currentTripId;
   function flash() {
     if (btn) { const orig=btn.textContent; btn.textContent='✓ Copied!'; setTimeout(()=>btn.textContent=orig, 2000); }
@@ -2201,8 +2198,8 @@ async function shareCurrentTrip(btn) {
 async function showSharedTrip(id) {
   showScreen('s-share');
   try {
-    const {data, error} = await db.from('trips').select('*').eq('id', id).single();
-    if (error || !data || data.name === '__trip_defaults__') {
+    const data = await api('trip_get_public', {id});
+    if (data.error) {
       document.getElementById('sh-loading').textContent = 'Trip not found.'; return;
     }
     renderSharedTrip(data);
@@ -2448,17 +2445,9 @@ function hideForgotPassword() {
   document.getElementById('auth-forgot-wrap').style.display = 'block';
 }
 async function sendPasswordReset() {
-  const email = document.getElementById('auth-reset-email').value.trim();
   const msg = document.getElementById('auth-reset-msg');
-  if (!email) { msg.textContent = 'Please enter your email.'; return; }
-  const { error } = await db.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + window.location.pathname
-  });
-  if (error) { msg.textContent = error.message; }
-  else {
-    msg.style.color = '#38a169';
-    msg.textContent = 'Reset link sent — check your inbox.';
-  }
+  msg.style.color = '#e53e3e';
+  msg.textContent = 'Password reset by email is unavailable. Sign in and use Settings → Change Password.';
 }
 
 function switchAuthTab() {
@@ -2484,26 +2473,15 @@ async function submitAuth() {
   btn.disabled = true;
   btn.textContent = _authMode === 'signup' ? 'Creating account…' : 'Signing in…';
   errEl.textContent = '';
-  let result;
-  if (_authMode === 'signup') {
-    result = await db.auth.signUp({ email, password });
-  } else {
-    result = await db.auth.signInWithPassword({ email, password });
-  }
+  const action = _authMode === 'signup' ? 'register' : 'login';
+  const result = await api(action, {email, password});
   if (result.error) {
-    errEl.textContent = result.error.message;
+    errEl.textContent = result.error;
     btn.disabled = false;
     btn.textContent = _authMode === 'signup' ? 'Create account' : 'Sign in';
     return;
   }
-  currentUser = result.data.user;
-  if (_authMode === 'signup' && !result.data.session) {
-    errEl.style.color = '#38a169';
-    errEl.textContent = 'Check your email to confirm your account, then sign in.';
-    btn.disabled = false; btn.textContent = 'Sign in'; _authMode = 'signin';
-    return;
-  }
-  onAuthSuccess(currentUser);
+  onAuthSuccess(result.user);
 }
 
 function onAuthSuccess(user) {
@@ -2527,7 +2505,7 @@ function onAuthSuccess(user) {
 }
 
 async function signOut() {
-  await db.auth.signOut();
+  await api('logout');
   currentUser = null;
   trips = []; gearInventory = []; templates = []; addonDefs = [];
   loadout = {}; loadoutName = 'Untitled Loadout';
@@ -2548,20 +2526,12 @@ async function signOut() {
     showSharedTrip(_shareId);
     return;
   }
-  const { data: { session } } = await db.auth.getSession();
-  if (session) {
-    onAuthSuccess(session.user);
+  const result = await api('me');
+  if (result.user) {
+    onAuthSuccess(result.user);
   } else {
     showScreen('s-auth');
   }
-  // Listen for auth state changes (e.g. magic link, tab refocus)
-  db.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session && !currentUser) {
-      onAuthSuccess(session.user);
-    } else if (event === 'SIGNED_OUT') {
-      currentUser = null;
-    }
-  });
 })();
 </script>
 </body>
