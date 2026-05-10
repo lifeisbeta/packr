@@ -1295,11 +1295,9 @@ function makeTRow(item,secId){
   const check=document.createElement('div');check.className='icheck'+(isP?(state==='full'?' on':state==='partial'?' partial':''):(item.checked?' on':''));check.classList.add(isP?'is-parent':'clickable');
   const ck=document.createElement('canvas');ck.className='ck';ck.style.width='10px';ck.style.height='10px';ck.dataset.state=isP?state:(item.checked?'full':'empty');check.appendChild(ck);
   if(isP){
-    const toggleParent=e=>{e.stopPropagation();if(e.cancelable)e.preventDefault();const allChecked=childSt(item)==='full';item.children.forEach(ch=>ch.checked=!allChecked);renderTripList();autoSave();};
-    check.addEventListener('click',toggleParent);check.addEventListener('touchend',toggleParent);
+    check.addEventListener('click',e=>{e.stopPropagation();const allChecked=childSt(item)==='full';item.children.forEach(ch=>ch.checked=!allChecked);renderTripList();autoSave();});
   } else {
-    const toggleItem=e=>{e.stopPropagation();if(e.cancelable)e.preventDefault();item.checked=!item.checked;renderTripList();autoSave();};
-    check.addEventListener('click',toggleItem);check.addEventListener('touchend',toggleItem);
+    check.addEventListener('click',e=>{e.stopPropagation();item.checked=!item.checked;renderTripList();autoSave();});
   }
   let eb=null;if(isP){eb=document.createElement('div');eb.className='expand-btn'+(item.expanded?' open':'');const ec=document.createElement('canvas');ec.className='exp';eb.appendChild(ec);eb.addEventListener('click',e=>{e.stopPropagation();item.expanded=!item.expanded;renderTripList();});}
   const nm=document.createElement('span');nm.className='iname'+(isP?' parent-name':'')+((!isP&&item.checked)?' done':'');nm.textContent=item.name;
