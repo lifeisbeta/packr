@@ -115,11 +115,13 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .sec-name{font-size:11px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-text-secondary)}
 .sec-count{font-size:11px;color:var(--color-text-tertiary)}
 .wear-head .sec-name{color:var(--color-text-warning)}
-.item-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary);position:relative}
+.item-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary);position:relative;transition:transform 0.12s}
 .item-row.is-editing{background:var(--color-background-secondary);margin:0 -8px;padding:9px 8px;border-radius:6px;border-bottom:none}
 .item-row.has-children{border-bottom:none}
-.drag-handle{width:16px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;cursor:grab;flex-shrink:0;opacity:0.1;padding:4px 0;transition:opacity 0.15s}
+.item-row.dragging{border-radius:8px;border-bottom-color:transparent;z-index:50;transition:none;box-shadow:0 4px 16px rgba(0,0,0,0.12)}
+.drag-handle{width:16px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;cursor:grab;flex-shrink:0;opacity:0.1;padding:4px 0;transition:opacity 0.15s;touch-action:none;-webkit-touch-callout:none}
 .item-row:hover .drag-handle,.inv-row:hover .drag-handle{opacity:0.35}
+.item-row.dragging .drag-handle{cursor:grabbing;opacity:0.6}
 .drag-handle span{display:block;width:12px;height:1.5px;background:var(--color-text-primary);border-radius:2px}
 .def-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary);position:relative;transition:transform 0.12s;user-select:none}
 .def-row.dragging{border-radius:8px;border-bottom-color:transparent;z-index:50;transition:none;box-shadow:0 4px 16px rgba(0,0,0,0.12)}
@@ -648,7 +650,7 @@ let defaultQty = {}; // {itemName: qty} — user-set default quantities
 let defaultEditingItem = null; // {type:'builtin'|'custom', id, name|ei}
 let defDrag = null; // active drag state for defaults screen
 let currentTripDestination = '';
-let dragSrc = null, dragSrcSec = null;
+let tripDrag = null;
 let invDragSrc = null, invDragSrcCat = null;
 let invEditId = null, invAddOpenCat = null;
 let gearInventory = [];
@@ -1297,6 +1299,7 @@ function renderTripList(){
   const fsi=tripSubAddOpenIdx;
   secs.forEach(secId=>{
     const si=tripItems.filter(i=>i.sec===secId),sd=document.createElement('div');
+    sd.dataset.sec=secId;
     const hd=document.createElement('div');hd.className='sec-head'+(secId==='wear'?' wear-head':'');
     hd.innerHTML=`<span class="sec-name">${lmap(secId)}</span><span class="sec-count">${secTot(secId)}</span>`;
     sd.appendChild(hd);
@@ -1314,8 +1317,52 @@ function renderTripList(){
 function makeTRow(item,secId){
   const idx=tripItems.indexOf(item),isP=item.children!==null,state=isP?childSt(item):null;
   const row=document.createElement('div');row.className='item-row'+(tripEditingIdx===idx?' is-editing':'')+(isP?' has-children':'');
-  row.draggable=!isP;row.dataset.idx=idx;row.dataset.sec=secId;
+  row.dataset.idx=idx;row.dataset.sec=secId;
   const handle=document.createElement('div');handle.className='drag-handle';handle.innerHTML='<span></span><span></span><span></span>';
+  handle.addEventListener('pointerdown',e=>{
+    if(tripEditingIdx!==null)return;
+    e.preventDefault();handle.setPointerCapture(e.pointerId);
+    const sec=row.parentElement;
+    const rowEls=[...sec.querySelectorAll('.item-row')];
+    const ri=rowEls.indexOf(row);
+    const rects=rowEls.map(r=>r.getBoundingClientRect());
+    row.classList.add('dragging');
+    tripDrag={item,secId,fromIdx:ri,curIdx:ri,el:row,rowEls,centers:rects.map(r=>r.top+r.height/2),rowH:rects[ri].height,startY:e.clientY};
+  });
+  handle.addEventListener('pointermove',e=>{
+    if(!tripDrag||tripDrag.el!==row)return;
+    const dy=e.clientY-tripDrag.startY;
+    row.style.transform=`translateY(${dy}px)`;
+    const dragCY=tripDrag.centers[tripDrag.fromIdx]+dy;
+    let ti=tripDrag.fromIdx,bd=Infinity;
+    tripDrag.centers.forEach((cy,i)=>{const d=Math.abs(dragCY-cy);if(d<bd){bd=d;ti=i;}});
+    ti=Math.max(0,Math.min(tripDrag.rowEls.length-1,ti));
+    if(ti!==tripDrag.curIdx){
+      tripDrag.curIdx=ti;
+      tripDrag.rowEls.forEach((el,i)=>{
+        if(el===row)return;
+        if(tripDrag.fromIdx<ti)el.style.transform=(i>tripDrag.fromIdx&&i<=ti)?`translateY(-${tripDrag.rowH}px)`:'';
+        else el.style.transform=(i>=ti&&i<tripDrag.fromIdx)?`translateY(${tripDrag.rowH}px)`:'';
+      });
+    }
+  });
+  handle.addEventListener('pointerup',()=>{
+    if(!tripDrag||tripDrag.el!==row)return;
+    const{secId:sid,fromIdx,curIdx,rowEls,item:draggedItem}=tripDrag;
+    tripDrag=null;
+    rowEls.forEach(el=>{el.style.transform='';el.classList.remove('dragging');});
+    if(curIdx!==fromIdx){
+      const secItems=tripItems.filter(i=>i.sec===sid);
+      secItems.splice(fromIdx,1);secItems.splice(curIdx,0,draggedItem);
+      let si=0;tripItems.forEach((_,i)=>{if(tripItems[i].sec===sid)tripItems[i]=secItems[si++];});
+      autoSave();renderTripList();
+    }
+  });
+  handle.addEventListener('pointercancel',()=>{
+    if(!tripDrag||tripDrag.el!==row)return;
+    tripDrag.rowEls.forEach(el=>{el.style.transform='';el.classList.remove('dragging');});
+    tripDrag=null;
+  });
   const check=document.createElement('div');check.className='icheck'+(isP?(state==='full'?' on':state==='partial'?' partial':''):(item.checked?' on':''));check.classList.add(isP?'is-parent':'clickable');
   const ck=document.createElement('canvas');ck.className='ck';ck.style.width='10px';ck.style.height='10px';ck.dataset.state=isP?state:(item.checked?'full':'empty');check.appendChild(ck);
   if(isP){
@@ -1332,12 +1379,6 @@ function makeTRow(item,secId){
   row.appendChild(handle);row.appendChild(check);if(eb)row.appendChild(eb);row.appendChild(nm);
   if(item.qty&&item.qty>=2&&!isP&&tripEditingIdx!==idx){const q=document.createElement('span');q.className='iqty';q.textContent='×'+item.qty;nm.appendChild(q);}
   row.appendChild(del);
-  if(!isP){
-    row.addEventListener('dragstart',e=>{dragSrc=idx;dragSrcSec=secId;setTimeout(()=>row.classList.add('dragging'),0);});
-    row.addEventListener('dragend',()=>{row.classList.remove('dragging');document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));});
-    row.addEventListener('dragover',e=>{e.preventDefault();if(dragSrcSec===secId&&dragSrc!==idx){document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));row.classList.add('drag-over');}});
-    row.addEventListener('drop',e=>{e.preventDefault();if(dragSrcSec===secId&&dragSrc!==null&&dragSrc!==idx){const mv=tripItems.splice(dragSrc,1)[0];tripItems.splice(tripItems.indexOf(item),0,mv);renderTripList();}});
-  }
   if(isP&&item.expanded){
     const sl=document.createElement('div');sl.className='sub-list';
     (item.children||[]).forEach((ch,ci)=>{
