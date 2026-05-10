@@ -636,6 +636,8 @@ let tripItems = [], computedNights = 2, currentTripId = null, currentTripNotes =
 let tripEditingIdx = null, tripAddOpenSec = null, tripSubAddOpenIdx = null;
 let defaultExtras = {}; // {sectionId: ['custom item']}
 let defaultHidden = {};  // {itemName: true}
+let defaultRenames = {}; // {originalName: 'new name'} for built-in items
+let defaultEditingItem = null; // {type:'builtin'|'custom', id, name|ei}
 let currentTripDestination = '';
 let dragSrc = null, dragSrcSec = null;
 let invDragSrc = null, invDragSrcCat = null;
@@ -829,6 +831,7 @@ async function loadDefaultPrefs() {
   if (data && data.data) {
     defaultExtras = data.data.extras || {};
     defaultHidden = data.data.hidden || {};
+    defaultRenames = data.data.renames || {};
   }
 }
 
@@ -836,7 +839,7 @@ async function saveDefaultPrefs() {
   const id = getDefaultsId();
   await db.from('trips').upsert({
     id, name: '__trip_defaults__',
-    data: {extras: defaultExtras, hidden: defaultHidden},
+    data: {extras: defaultExtras, hidden: defaultHidden, renames: defaultRenames},
     user_id: currentUser?.id
   });
 }
@@ -1179,7 +1182,7 @@ function buildTripList(){
   const activeAddonNames = addonDefs.filter(a=>addons[a.id]).map(a=>a.name);
   document.getElementById('l-chips').innerHTML=[n+' night'+(n!==1?'s':''),transport==='plane'?'Flying':'Driving',dr,...activeAddonNames].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
   document.getElementById('l-warn').style.display=transport==='plane'?'block':'none';
-  const mk=(nm,q,ch)=>({name:nm,qty:q||null,checked:false,children:ch||null,expanded:!!ch});
+  const mk=(nm,q,ch)=>({name:defaultRenames[nm]||nm,qty:q||null,checked:false,children:ch||null,expanded:!!ch});
   const defs=[
     {id:'wear',rows:[mk('Outfit for travel day'),mk('Light jacket')]},
     {id:'toi',rows:[mk('Toiletry bag',null,[{name:'Toothbrush',checked:false},{name:'Toothpaste',checked:false},{name:'Deodorant',checked:false},{name:'Face wash',checked:false},{name:'Shampoo',checked:false}])]},
@@ -1733,86 +1736,106 @@ function goSettings() {
 }
 function goDefaults() { renderDefaults(); showScreen('s-defaults'); }
 
+function makeDefaultEditPanel(currentVal, onSave, onCancel) {
+  const panel = document.createElement('div');
+  panel.className = 'edit-panel';
+  panel.style.margin = '0 0 4px 0';
+  const r1 = document.createElement('div'); r1.className = 'ep-name-row';
+  const l1 = document.createElement('span'); l1.className = 'ep-label'; l1.textContent = 'Name';
+  const ni = document.createElement('input'); ni.className = 'ep-name'; ni.value = currentVal;
+  r1.appendChild(l1); r1.appendChild(ni);
+  const r2 = document.createElement('div'); r2.className = 'ep-bottom-row';
+  const gap = document.createElement('div'); gap.style.flex = '1';
+  const cb = document.createElement('button'); cb.className = 'ep-cancel'; cb.textContent = 'Cancel'; cb.type = 'button';
+  const sb = document.createElement('button'); sb.className = 'ep-save'; sb.textContent = 'Done'; sb.type = 'button';
+  r2.appendChild(gap); r2.appendChild(cb); r2.appendChild(sb);
+  panel.appendChild(r1); panel.appendChild(r2);
+  let done = false;
+  function save() { if (done) return; done = true; const v = ni.value.trim(); if (v) onSave(v); else onCancel(); }
+  cb.addEventListener('click', () => { if (!done) { done = true; onCancel(); } });
+  sb.addEventListener('click', save);
+  ni.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } else if (e.key === 'Escape') { if (!done) { done = true; onCancel(); } } });
+  setTimeout(() => ni.focus(), 30);
+  return panel;
+}
+
 function renderDefaults() {
   const body = document.getElementById('defaults-body');
   body.innerHTML = '';
   Object.entries(HARDCODED_SECTIONS).forEach(([id, sec]) => {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'margin-bottom:2rem';
-    const lbl = document.createElement('div');
-    lbl.className = 'section-label';
-    lbl.textContent = sec.label;
+    const lbl = document.createElement('div'); lbl.className = 'section-label'; lbl.textContent = sec.label;
     wrap.appendChild(lbl);
+
     // Built-in items
-    sec.items.forEach(name => {
-      const isHid = !!defaultHidden[name];
+    sec.items.forEach(origName => {
+      const displayName = defaultRenames[origName] || origName;
+      const isHid = !!defaultHidden[origName];
+      const isEditing = defaultEditingItem?.type === 'builtin' && defaultEditingItem?.name === origName;
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
       const nm = document.createElement('span');
-      nm.style.cssText = 'font-size:14px;color:' + (isHid ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)') + ';text-decoration:' + (isHid ? 'line-through' : 'none');
-      nm.textContent = name;
+      nm.style.cssText = 'flex:1;font-size:14px;cursor:pointer;color:' + (isHid ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)') + ';text-decoration:' + (isHid ? 'line-through' : 'none');
+      nm.textContent = displayName;
+      nm.addEventListener('click', () => { defaultEditingItem = isEditing ? null : {type:'builtin', id, name:origName}; renderDefaults(); });
       const btn = document.createElement('button');
-      btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;padding:3px 8px;border-radius:4px;' + (isHid ? 'color:var(--color-text-secondary);background:var(--color-background-secondary)' : 'color:#c0392b');
+      btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;padding:3px 8px;border-radius:4px;flex-shrink:0;' + (isHid ? 'color:var(--color-text-secondary);background:var(--color-background-secondary)' : 'color:#c0392b');
       btn.textContent = isHid ? 'Restore' : 'Hide';
       btn.addEventListener('click', () => {
-        if (defaultHidden[name]) delete defaultHidden[name]; else defaultHidden[name] = true;
+        if (defaultHidden[origName]) delete defaultHidden[origName]; else defaultHidden[origName] = true;
         saveDefaultPrefs(); renderDefaults();
       });
       row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
+      if (isEditing) {
+        wrap.appendChild(makeDefaultEditPanel(displayName,
+          v => { if (v !== origName) defaultRenames[origName] = v; else delete defaultRenames[origName]; defaultEditingItem = null; saveDefaultPrefs(); renderDefaults(); },
+          () => { defaultEditingItem = null; renderDefaults(); }
+        ));
+      }
     });
+
     // Custom extras
     const extras = defaultExtras[id] || [];
     extras.forEach((name, ei) => {
+      const isEditing = defaultEditingItem?.type === 'custom' && defaultEditingItem?.id === id && defaultEditingItem?.ei === ei;
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
       // Reorder buttons
-      const reorder = document.createElement('div');
-      reorder.style.cssText = 'display:flex;flex-direction:column;gap:1px;flex-shrink:0';
+      const reorder = document.createElement('div'); reorder.style.cssText = 'display:flex;flex-direction:column;gap:1px;flex-shrink:0';
       const mkArrow = (label, disabled, fn) => {
-        const b = document.createElement('button');
-        b.textContent = label;
-        b.disabled = disabled;
+        const b = document.createElement('button'); b.textContent = label; b.disabled = disabled; b.type = 'button';
         b.style.cssText = 'background:none;border:none;cursor:' + (disabled?'default':'pointer') + ';font-size:11px;color:' + (disabled?'var(--color-border-secondary)':'var(--color-text-secondary)') + ';padding:0;line-height:1;font-family:var(--font-sans);width:16px';
-        if (!disabled) b.addEventListener('click', fn);
-        return b;
+        if (!disabled) b.addEventListener('click', fn); return b;
       };
-      reorder.appendChild(mkArrow('↑', ei === 0, () => {
-        const arr = defaultExtras[id]; [arr[ei-1], arr[ei]] = [arr[ei], arr[ei-1]];
-        saveDefaultPrefs(); renderDefaults();
-      }));
-      reorder.appendChild(mkArrow('↓', ei === extras.length - 1, () => {
-        const arr = defaultExtras[id]; [arr[ei], arr[ei+1]] = [arr[ei+1], arr[ei]];
-        saveDefaultPrefs(); renderDefaults();
-      }));
+      reorder.appendChild(mkArrow('↑', ei===0, ()=>{ const a=defaultExtras[id];[a[ei-1],a[ei]]=[a[ei],a[ei-1]];saveDefaultPrefs();renderDefaults(); }));
+      reorder.appendChild(mkArrow('↓', ei===extras.length-1, ()=>{ const a=defaultExtras[id];[a[ei],a[ei+1]]=[a[ei+1],a[ei]];saveDefaultPrefs();renderDefaults(); }));
       const nm = document.createElement('span');
-      nm.style.cssText = 'flex:1;font-size:14px;color:var(--color-text-primary);display:flex;align-items:center;gap:6px';
+      nm.style.cssText = 'flex:1;font-size:14px;color:var(--color-text-primary);display:flex;align-items:center;gap:6px;cursor:pointer';
       nm.innerHTML = name + ' <span style="font-size:11px;color:var(--color-text-tertiary);font-weight:500;background:var(--color-background-secondary);padding:2px 5px;border-radius:3px">custom</span>';
+      nm.addEventListener('click', () => { defaultEditingItem = isEditing ? null : {type:'custom', id, ei}; renderDefaults(); });
       const btn = document.createElement('button');
       btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;color:#c0392b;padding:3px 8px;border-radius:4px;flex-shrink:0';
       btn.textContent = 'Remove';
-      btn.addEventListener('click', () => {
-        defaultExtras[id] = (defaultExtras[id] || []).filter(n => n !== name);
-        saveDefaultPrefs(); renderDefaults();
-      });
+      btn.addEventListener('click', () => { defaultExtras[id]=(defaultExtras[id]||[]).filter((_,i)=>i!==ei); defaultEditingItem=null; saveDefaultPrefs(); renderDefaults(); });
       row.appendChild(reorder); row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
+      if (isEditing) {
+        wrap.appendChild(makeDefaultEditPanel(name,
+          v => { defaultExtras[id][ei] = v; defaultEditingItem = null; saveDefaultPrefs(); renderDefaults(); },
+          () => { defaultEditingItem = null; renderDefaults(); }
+        ));
+      }
     });
+
     // Add input row
-    const addRow = document.createElement('div');
-    addRow.style.cssText = 'display:flex;gap:8px;margin-top:10px';
-    const inp = document.createElement('input');
-    inp.type = 'text'; inp.placeholder = 'Add a default item…';
+    const addRow = document.createElement('div'); addRow.style.cssText = 'display:flex;gap:8px;margin-top:10px';
+    const inp = document.createElement('input'); inp.type='text'; inp.placeholder='Add a default item…';
     inp.style.cssText = 'flex:1;padding:8px 12px;font-size:14px;font-family:var(--font-sans);border:0.5px solid var(--color-border-secondary);border-radius:8px;outline:none;background:var(--color-background-primary);color:var(--color-text-primary)';
-    const addBtn = document.createElement('button');
-    addBtn.className = 'primary-btn'; addBtn.textContent = 'Add';
+    const addBtn = document.createElement('button'); addBtn.className='primary-btn'; addBtn.textContent='Add';
     addBtn.style.cssText = 'background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans)';
-    function doAdd() {
-      const v = inp.value.trim(); if (!v) return;
-      if (!defaultExtras[id]) defaultExtras[id] = [];
-      if (!defaultExtras[id].includes(v)) { defaultExtras[id].push(v); saveDefaultPrefs(); renderDefaults(); }
-      else { inp.value = ''; }
-    }
+    function doAdd() { const v=inp.value.trim(); if(!v)return; if(!defaultExtras[id])defaultExtras[id]=[]; if(!defaultExtras[id].includes(v)){defaultExtras[id].push(v);saveDefaultPrefs();renderDefaults();}else{inp.value='';} }
     addBtn.addEventListener('click', doAdd);
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+    inp.addEventListener('keydown', e => { if(e.key==='Enter') doAdd(); });
     addRow.appendChild(inp); addRow.appendChild(addBtn); wrap.appendChild(addRow);
     body.appendChild(wrap);
   });
@@ -2263,7 +2286,7 @@ async function signOut() {
   currentUser = null;
   trips = []; gearInventory = []; templates = []; addonDefs = [];
   loadout = {}; loadoutName = 'Untitled Loadout';
-  defaultExtras = {}; defaultHidden = {};
+  defaultExtras = {}; defaultHidden = {}; defaultRenames = {}; defaultEditingItem = null;
   document.getElementById('auth-email').value = '';
   document.getElementById('auth-password').value = '';
   document.getElementById('auth-error').textContent = '';
