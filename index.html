@@ -1689,6 +1689,10 @@ function makeTripCard(trip, isArchived){
       computedNights=d.nights||2;currentTripId=trip.id;currentTripNotes=d.notes||'';
       currentTripDestination=d.destination||'';
       const destInp2=document.getElementById('f-dest');destInp2.value=currentTripDestination;
+      // Restore date inputs so autoSave() doesn't clobber saved dates
+      const fD2=document.getElementById('f-depart'),fR2=document.getElementById('f-return');
+      fD2.value=d.depart||'';fR2.value=d.returnDate||'';
+      setTransport(d.transport||'car');
       document.getElementById('l-title').textContent=trip.name;
       const dep=d.depart,ret=d.returnDate;const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
       const loadedAddonNames=addonDefs.filter(a=>addons[a.id]).map(a=>a.name);
@@ -1775,7 +1779,14 @@ function renderTrips(){
       addons=d.addons||{};
       computedNights=d.nights||2;
       currentTripId=trip.id;
+      currentTripNotes=d.notes||'';
+      currentTripDestination=d.destination||'';
       document.getElementById('l-title').textContent=trip.name;
+      // Restore date/dest inputs so autoSave() doesn't clobber saved dates
+      document.getElementById('f-depart').value=d.depart||'';
+      document.getElementById('f-return').value=d.returnDate||'';
+      document.getElementById('f-dest').value=currentTripDestination;
+      setTransport(d.transport||'car');
       // Restore chips
       const dep=d.depart,ret=d.returnDate;
       const dr=dep&&ret?`${fmtS(dep)} – ${fmtS(ret)}`:null;
@@ -1785,7 +1796,9 @@ function renderTrips(){
         d.transport==='plane'?'Flying':'Driving',dr,...restoredAddonNames
       ].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
       document.getElementById('l-warn').style.display=d.transport==='plane'?'block':'none';
+      const notesElBP=document.getElementById('l-notes');notesElBP.value=currentTripNotes;notesElBP.style.height='auto';notesElBP.style.height=(notesElBP.scrollHeight||36)+'px';
       renderTripList();showScreen('s-trip-list');updateTP();
+      if(currentTripDestination&&d.depart){fetchWeather(currentTripDestination,d.depart,d.returnDate||d.depart,'l-weather-card');}else{document.getElementById('l-weather-card').style.display='none';}
     });
     card.appendChild(icon);card.appendChild(info);card.appendChild(del);card.appendChild(load);list.appendChild(card);
   });
