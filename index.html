@@ -620,15 +620,19 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 // PHP API
 // ─────────────────────────────────────────────
 async function api(action, payload = {}) {
-  const res = await fetch('api.php', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    credentials: 'same-origin',
-    body: JSON.stringify({action, ...payload})
-  });
-  const json = await res.json();
-  if (!res.ok) return {error: json.error || 'Request failed'};
-  return json;
+  try {
+    const res = await fetch('api.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({action, ...payload})
+    });
+    const json = await res.json();
+    if (!res.ok) return {error: json.error || 'Request failed'};
+    return json;
+  } catch(e) {
+    return {error: 'Network error'};
+  }
 }
 
 // ── SYNC STATUS ──
@@ -2539,10 +2543,14 @@ async function signOut() {
     showSharedTrip(_shareId);
     return;
   }
-  const result = await api('me');
-  if (result.user) {
-    onAuthSuccess(result.user);
-  } else {
+  try {
+    const result = await api('me');
+    if (result.user) {
+      onAuthSuccess(result.user);
+    } else {
+      showScreen('s-auth');
+    }
+  } catch(e) {
     showScreen('s-auth');
   }
 })();
