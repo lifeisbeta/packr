@@ -847,6 +847,12 @@ async function loadDefaultPrefs() {
     defaultRenames = data.data.renames || {};
     defaultSectionOrder = data.data.sectionOrder || {};
     defaultQty = data.data.qty || {};
+    // Prune any hidden items out of sectionOrder so they don't affect drag indices
+    Object.keys(defaultHidden).forEach(n => {
+      Object.keys(defaultSectionOrder).forEach(sid => {
+        defaultSectionOrder[sid] = defaultSectionOrder[sid].filter(e => e.n !== n);
+      });
+    });
   }
 }
 
@@ -1867,6 +1873,7 @@ function renderDefaults() {
       const origName = entry.n;
       const displayName = isBuiltin ? (defaultRenames[origName] || origName) : origName;
       const isHid = isBuiltin && !!defaultHidden[origName];
+      if (isHid) return; // hidden items don't appear in the list at all
       const isEditing = defaultEditingItem?.id === id && defaultEditingItem?.oi === oi;
 
       const row = document.createElement('div');
@@ -1957,9 +1964,14 @@ function renderDefaults() {
       // Action button
       const btn = document.createElement('button'); btn.type = 'button';
       if (isBuiltin) {
-        btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;padding:3px 8px;border-radius:4px;flex-shrink:0;' + (isHid ? 'color:var(--color-text-secondary);background:var(--color-background-secondary)' : 'color:#c0392b');
-        btn.textContent = isHid ? 'Restore' : 'Hide';
-        btn.addEventListener('click', () => { if(defaultHidden[origName])delete defaultHidden[origName];else defaultHidden[origName]=true; saveDefaultPrefs(); renderDefaults(); });
+        btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;padding:3px 8px;border-radius:4px;flex-shrink:0;color:#c0392b';
+        btn.textContent = 'Hide';
+        btn.addEventListener('click', () => {
+          defaultHidden[origName] = true;
+          // Remove from section order so drag indices stay accurate
+          defaultSectionOrder[id] = order.filter(e => e.n !== origName);
+          saveDefaultPrefs(); renderDefaults();
+        });
       } else {
         btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;color:#c0392b;padding:3px 8px;border-radius:4px;flex-shrink:0';
         btn.textContent = 'Remove';
