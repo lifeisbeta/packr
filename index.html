@@ -311,8 +311,14 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 /* ── HOME USER BAR ── */
 .home-user-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:3rem}
 .home-user-email{font-size:11px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
-.home-signout-btn{font-size:11px;font-weight:500;color:var(--color-text-tertiary);background:none;border:none;cursor:pointer;padding:0;letter-spacing:0.04em;text-transform:uppercase}
-.home-signout-btn:hover{color:var(--color-text-primary)}
+.home-profile-btn{display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:0;font-family:var(--font-sans)}
+.home-profile-btn:hover .home-user-email{color:var(--color-text-secondary)}
+/* ── SETTINGS ── */
+.settings-section{margin-bottom:2rem}
+.settings-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:8px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:0.5px solid var(--color-border-tertiary);cursor:pointer;font-size:15px;color:var(--color-text-primary);background:none;border-left:none;border-right:none;border-top:none;width:100%;font-family:var(--font-sans);text-align:left}
+.settings-row:hover{opacity:0.7}
+.settings-row-danger{color:#c0392b}
 </style>
 </head>
 <body>
@@ -360,10 +366,10 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 <div id="s-home" class="screen">
   <div class="home-user-bar">
     <div class="home-wordmark" style="margin-bottom:0">Packr</div>
-    <div style="display:flex;align-items:center;gap:12px">
+    <button class="home-profile-btn" onclick="goSettings()">
       <span class="home-user-email" id="home-user-email"></span>
-      <button class="home-signout-btn" onclick="signOut()">Sign out</button>
-    </div>
+      <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:var(--color-text-tertiary);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
   </div>
   <p class="home-headline">What are you packing for?</p>
   <p class="home-sub">Choose a mode to get started.</p>
@@ -488,8 +494,26 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 </div>
 
 <!-- DEFAULTS MANAGEMENT -->
+<!-- SETTINGS / ACCOUNT -->
+<div id="s-settings" class="screen">
+  <div class="wordmark" onclick="goHome()">← Packr</div>
+  <h1 class="page-title">Account</h1>
+  <p id="settings-email" style="font-size:14px;color:var(--color-text-secondary);margin-bottom:2.5rem"></p>
+  <div class="settings-section">
+    <div class="settings-label">Preferences</div>
+    <button class="settings-row" onclick="goDefaults()">
+      <span>Default packing items</span>
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--color-text-tertiary);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Account</div>
+    <button class="settings-row settings-row-danger" onclick="signOut()">Sign out</button>
+  </div>
+</div>
+
 <div id="s-defaults" class="screen">
-  <div class="wordmark" onclick="showScreen('s-trip-setup')">← Back</div>
+  <div class="wordmark" onclick="goSettings()">← Account</div>
   <h1 class="page-title">Default items</h1>
   <p style="font-size:14px;color:var(--color-text-secondary);margin-bottom:2rem;line-height:1.5">Customize what appears on every new packing list. Changes apply to all future trips.</p>
   <div id="defaults-body"></div>
@@ -1019,6 +1043,7 @@ function restoreScreen(id) {
   if (id === 's-home') renderHomeTripsList();
   else if (id === 's-trip-list') { renderTripList(); updateTP(); }
   else if (id === 's-bp') { initBPPill(); renderBPLoadout(); renderInventory(); renderTemplates(); renderTrips(); }
+  else if (id === 's-settings') { document.getElementById('settings-email').textContent = currentUser?.email||''; }
   else if (id === 's-defaults') renderDefaults();
   showScreen(id, false);
 }
@@ -1704,6 +1729,10 @@ const HARDCODED_SECTIONS = {
   misc: {label:'Miscellaneous', items:['Meds','Sunglasses','Travel pillow','Water bottle','Reusable bag']},
 };
 
+function goSettings() {
+  document.getElementById('settings-email').textContent = currentUser?.email || '';
+  showScreen('s-settings');
+}
 function goDefaults() { renderDefaults(); showScreen('s-defaults'); }
 
 function renderDefaults() {
