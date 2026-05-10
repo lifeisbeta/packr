@@ -1005,11 +1005,32 @@ async function unarchiveTrip(id) {
 // ─────────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────────
-function showScreen(id) {
+const NO_PUSH_SCREENS = new Set(['s-auth','s-onboard','s-share']);
+function showScreen(id, push=true) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
+  if (push && !NO_PUSH_SCREENS.has(id)) {
+    history.pushState({screen: id}, '');
+  }
 }
+function restoreScreen(id) {
+  // Navigate to a screen triggered by popstate — re-render but don't push history
+  if (id === 's-home') renderHomeTripsList();
+  else if (id === 's-trip-list') { renderTripList(); updateTP(); }
+  else if (id === 's-bp') { initBPPill(); renderBPLoadout(); renderInventory(); renderTemplates(); renderTrips(); }
+  else if (id === 's-defaults') renderDefaults();
+  showScreen(id, false);
+}
+window.addEventListener('popstate', e => {
+  const id = e.state?.screen;
+  if (!id || !currentUser) {
+    // Popped before app entry — anchor back at home
+    if (currentUser) { renderHomeTripsList(); showScreen('s-home', false); history.replaceState({screen:'s-home'}, ''); }
+    return;
+  }
+  restoreScreen(id);
+});
 function goHome() { renderHomeTripsList(); showScreen('s-home'); }
 function setupGoBack() { if(currentTripId){showScreen('s-trip-list');}else{goHome();} }
 function goTrip() {
@@ -2184,7 +2205,8 @@ function onAuthSuccess(user) {
     if (isNewUser) {
       startOnboarding();
     } else {
-      showScreen('s-home');
+      showScreen('s-home', false);
+      history.replaceState({screen:'s-home'}, '');
     }
   });
 }
