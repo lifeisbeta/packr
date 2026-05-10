@@ -1761,20 +1761,40 @@ function renderDefaults() {
       row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
     });
     // Custom extras
-    (defaultExtras[id] || []).forEach(name => {
+    const extras = defaultExtras[id] || [];
+    extras.forEach((name, ei) => {
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+      // Reorder buttons
+      const reorder = document.createElement('div');
+      reorder.style.cssText = 'display:flex;flex-direction:column;gap:1px;flex-shrink:0';
+      const mkArrow = (label, disabled, fn) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.disabled = disabled;
+        b.style.cssText = 'background:none;border:none;cursor:' + (disabled?'default':'pointer') + ';font-size:11px;color:' + (disabled?'var(--color-border-secondary)':'var(--color-text-secondary)') + ';padding:0;line-height:1;font-family:var(--font-sans);width:16px';
+        if (!disabled) b.addEventListener('click', fn);
+        return b;
+      };
+      reorder.appendChild(mkArrow('↑', ei === 0, () => {
+        const arr = defaultExtras[id]; [arr[ei-1], arr[ei]] = [arr[ei], arr[ei-1]];
+        saveDefaultPrefs(); renderDefaults();
+      }));
+      reorder.appendChild(mkArrow('↓', ei === extras.length - 1, () => {
+        const arr = defaultExtras[id]; [arr[ei], arr[ei+1]] = [arr[ei+1], arr[ei]];
+        saveDefaultPrefs(); renderDefaults();
+      }));
       const nm = document.createElement('span');
-      nm.style.cssText = 'font-size:14px;color:var(--color-text-primary);display:flex;align-items:center;gap:6px';
+      nm.style.cssText = 'flex:1;font-size:14px;color:var(--color-text-primary);display:flex;align-items:center;gap:6px';
       nm.innerHTML = name + ' <span style="font-size:11px;color:var(--color-text-tertiary);font-weight:500;background:var(--color-background-secondary);padding:2px 5px;border-radius:3px">custom</span>';
       const btn = document.createElement('button');
-      btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;color:#c0392b;padding:3px 8px;border-radius:4px';
+      btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;color:#c0392b;padding:3px 8px;border-radius:4px;flex-shrink:0';
       btn.textContent = 'Remove';
       btn.addEventListener('click', () => {
         defaultExtras[id] = (defaultExtras[id] || []).filter(n => n !== name);
         saveDefaultPrefs(); renderDefaults();
       });
-      row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
+      row.appendChild(reorder); row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
     });
     // Add input row
     const addRow = document.createElement('div');
