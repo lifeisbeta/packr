@@ -121,6 +121,12 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .drag-handle{width:16px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;cursor:grab;flex-shrink:0;opacity:0.1;padding:4px 0;transition:opacity 0.15s}
 .item-row:hover .drag-handle,.inv-row:hover .drag-handle{opacity:0.35}
 .drag-handle span{display:block;width:12px;height:1.5px;background:var(--color-text-primary);border-radius:2px}
+.def-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary);position:relative;transition:transform 0.12s;user-select:none}
+.def-row.dragging{border-radius:8px;border-bottom-color:transparent;z-index:50;transition:none;box-shadow:0 4px 16px rgba(0,0,0,0.12)}
+.def-drag-handle{width:22px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;cursor:grab;flex-shrink:0;opacity:0.2;padding:6px 2px;touch-action:none;-webkit-touch-callout:none}
+.def-drag-handle:hover{opacity:0.55}
+.def-row.dragging .def-drag-handle{cursor:grabbing;opacity:0.7}
+.def-drag-handle span{display:block;width:12px;height:1.5px;background:var(--color-text-primary);border-radius:2px}
 .icheck{width:18px;height:18px;border-radius:4px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background 0.12s,border-color 0.12s}
 .icheck.on{background:var(--color-text-primary);border-color:var(--color-text-primary)}
 .icheck.partial{border-color:var(--color-border-primary)}
@@ -639,6 +645,7 @@ let defaultHidden = {};  // {itemName: true}
 let defaultRenames = {}; // {originalName: 'new name'} for built-in items
 let defaultSectionOrder = {}; // {sectionId: [{t:'b'|'c', n:name}]}
 let defaultEditingItem = null; // {type:'builtin'|'custom', id, name|ei}
+let defDrag = null; // active drag state for defaults screen
 let currentTripDestination = '';
 let dragSrc = null, dragSrcSec = null;
 let invDragSrc = null, invDragSrcCat = null;
@@ -1776,12 +1783,12 @@ function renderDefaults() {
     const lbl = document.createElement('div'); lbl.className = 'section-label'; lbl.textContent = sec.label;
     wrap.appendChild(lbl);
 
+    // Rows container — gives us a clean querySelector scope per section
+    const rowsWrap = document.createElement('div');
+    rowsWrap.dataset.secId = id;
+    wrap.appendChild(rowsWrap);
+
     const order = getSectionOrder(id);
-    const mkArrow = (label, disabled, fn) => {
-      const b = document.createElement('button'); b.textContent = label; b.disabled = disabled; b.type = 'button';
-      b.style.cssText = 'background:none;border:none;cursor:' + (disabled?'default':'pointer') + ';font-size:11px;color:' + (disabled?'var(--color-border-secondary)':'var(--color-text-secondary)') + ';padding:0;line-height:1;font-family:var(--font-sans);width:16px';
-      if (!disabled) b.addEventListener('click', fn); return b;
-    };
 
     order.forEach((entry, oi) => {
       const isBuiltin = entry.t === 'b';
@@ -1791,12 +1798,81 @@ function renderDefaults() {
       const isEditing = defaultEditingItem?.id === id && defaultEditingItem?.oi === oi;
 
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+      row.className = 'def-row';
+      row.dataset.oi = oi;
 
-      // ↑↓ reorder
-      const reorder = document.createElement('div'); reorder.style.cssText = 'display:flex;flex-direction:column;gap:1px;flex-shrink:0';
-      reorder.appendChild(mkArrow('↑', oi===0, () => { [order[oi-1],order[oi]]=[order[oi],order[oi-1]]; defaultSectionOrder[id]=order; saveDefaultPrefs(); renderDefaults(); }));
-      reorder.appendChild(mkArrow('↓', oi===order.length-1, () => { [order[oi],order[oi+1]]=[order[oi+1],order[oi]]; defaultSectionOrder[id]=order; saveDefaultPrefs(); renderDefaults(); }));
+      // ≡ drag handle
+      const handle = document.createElement('div');
+      handle.className = 'def-drag-handle';
+      handle.innerHTML = '<span></span><span></span><span></span>';
+
+      // Pointer-event drag logic
+      handle.addEventListener('pointerdown', e => {
+        if (defaultEditingItem) return; // don't drag while editing
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+        const rowEls = [...rowsWrap.querySelectorAll('.def-row')];
+        const idx = rowEls.indexOf(row);
+        const rects = rowEls.map(r => r.getBoundingClientRect());
+        const centers = rects.map(r => r.top + r.height / 2);
+        row.classList.add('dragging');
+        defDrag = {
+          sectionId: id,
+          order: [...order],
+          fromIdx: idx,
+          curIdx: idx,
+          el: row,
+          rowEls,
+          centers,
+          rowH: rects[idx].height,
+          startY: e.clientY
+        };
+      });
+
+      handle.addEventListener('pointermove', e => {
+        if (!defDrag || defDrag.el !== row) return;
+        const dy = e.clientY - defDrag.startY;
+        row.style.transform = `translateY(${dy}px)`;
+        // Find nearest slot
+        const dragCY = defDrag.centers[defDrag.fromIdx] + dy;
+        let targetIdx = defDrag.fromIdx, bestDist = Infinity;
+        defDrag.centers.forEach((cy, i) => {
+          const d = Math.abs(dragCY - cy);
+          if (d < bestDist) { bestDist = d; targetIdx = i; }
+        });
+        targetIdx = Math.max(0, Math.min(defDrag.rowEls.length - 1, targetIdx));
+        if (targetIdx !== defDrag.curIdx) {
+          defDrag.curIdx = targetIdx;
+          defDrag.rowEls.forEach((el, i) => {
+            if (el === row) return;
+            if (defDrag.fromIdx < targetIdx) {
+              el.style.transform = (i > defDrag.fromIdx && i <= targetIdx) ? `translateY(-${defDrag.rowH}px)` : '';
+            } else {
+              el.style.transform = (i >= targetIdx && i < defDrag.fromIdx) ? `translateY(${defDrag.rowH}px)` : '';
+            }
+          });
+        }
+      });
+
+      handle.addEventListener('pointerup', () => {
+        if (!defDrag || defDrag.el !== row) return;
+        const { sectionId, fromIdx, curIdx, rowEls, order: snapOrder } = defDrag;
+        defDrag = null;
+        rowEls.forEach(el => { el.style.transform = ''; el.classList.remove('dragging'); });
+        if (curIdx !== fromIdx) {
+          const [moved] = snapOrder.splice(fromIdx, 1);
+          snapOrder.splice(curIdx, 0, moved);
+          defaultSectionOrder[sectionId] = snapOrder;
+          saveDefaultPrefs();
+          renderDefaults();
+        }
+      });
+
+      handle.addEventListener('pointercancel', () => {
+        if (!defDrag || defDrag.el !== row) return;
+        defDrag.rowEls.forEach(el => { el.style.transform = ''; el.classList.remove('dragging'); });
+        defDrag = null;
+      });
 
       // Name
       const nm = document.createElement('span');
@@ -1821,10 +1897,11 @@ function renderDefaults() {
         });
       }
 
-      row.appendChild(reorder); row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
+      row.appendChild(handle); row.appendChild(nm); row.appendChild(btn);
+      rowsWrap.appendChild(row);
 
       if (isEditing) {
-        wrap.appendChild(makeDefaultEditPanel(displayName,
+        rowsWrap.appendChild(makeDefaultEditPanel(displayName,
           v => {
             if (isBuiltin) { if(v!==origName)defaultRenames[origName]=v; else delete defaultRenames[origName]; }
             else { defaultExtras[id]=(defaultExtras[id]||[]).map(n=>n===origName?v:n); order[oi]={t:'c',n:v}; defaultSectionOrder[id]=order; }
