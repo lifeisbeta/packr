@@ -115,7 +115,8 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .sec-name{font-size:11px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-text-secondary)}
 .sec-count{font-size:11px;color:var(--color-text-tertiary)}
 .wear-head .sec-name{color:var(--color-text-warning)}
-.item-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary);position:relative;transition:transform 0.12s}
+.item-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary);position:relative}
+.item-row.shifting{transition:transform 0.12s}
 .item-row.is-editing{background:var(--color-background-secondary);margin:0 -8px;padding:9px 8px;border-radius:6px;border-bottom:none}
 .item-row.has-children{border-bottom:none}
 .item-row.dragging{border-radius:8px;border-bottom-color:transparent;z-index:50;transition:none;box-shadow:0 4px 16px rgba(0,0,0,0.12)}
@@ -123,7 +124,8 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .item-row:hover .drag-handle,.inv-row:hover .drag-handle{opacity:0.35}
 .item-row.dragging .drag-handle{cursor:grabbing;opacity:0.6}
 .drag-handle span{display:block;width:12px;height:1.5px;background:var(--color-text-primary);border-radius:2px}
-.def-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary);position:relative;transition:transform 0.12s;user-select:none}
+.def-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary);position:relative;user-select:none}
+.def-row.shifting{transition:transform 0.12s}
 .def-row.dragging{border-radius:8px;border-bottom-color:transparent;z-index:50;transition:none;box-shadow:0 4px 16px rgba(0,0,0,0.12)}
 .def-drag-handle{width:22px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;cursor:grab;flex-shrink:0;opacity:0.2;padding:6px 2px;touch-action:none;-webkit-touch-callout:none}
 .def-drag-handle:hover{opacity:0.55}
@@ -1341,8 +1343,10 @@ function makeTRow(item,secId){
       tripDrag.curIdx=ti;
       tripDrag.rowEls.forEach((el,i)=>{
         if(el===row)return;
-        if(tripDrag.fromIdx<ti)el.style.transform=(i>tripDrag.fromIdx&&i<=ti)?`translateY(-${tripDrag.rowH}px)`:'';
-        else el.style.transform=(i>=ti&&i<tripDrag.fromIdx)?`translateY(${tripDrag.rowH}px)`:'';
+        const shift=tripDrag.fromIdx<ti?(i>tripDrag.fromIdx&&i<=ti):(i>=ti&&i<tripDrag.fromIdx);
+        const dir=tripDrag.fromIdx<ti?-1:1;
+        if(shift){el.classList.add('shifting');el.style.transform=`translateY(${dir*tripDrag.rowH}px)`;}
+        else{el.style.transform='';el.classList.remove('shifting');}
       });
     }
   });
@@ -1350,7 +1354,7 @@ function makeTRow(item,secId){
     if(!tripDrag||tripDrag.el!==row)return;
     const{secId:sid,fromIdx,curIdx,rowEls,item:draggedItem}=tripDrag;
     tripDrag=null;
-    rowEls.forEach(el=>{el.style.transform='';el.classList.remove('dragging');});
+    rowEls.forEach(el=>{el.style.transform='';el.classList.remove('dragging','shifting');});
     if(curIdx!==fromIdx){
       const secItems=tripItems.filter(i=>i.sec===sid);
       secItems.splice(fromIdx,1);secItems.splice(curIdx,0,draggedItem);
@@ -1360,7 +1364,7 @@ function makeTRow(item,secId){
   });
   handle.addEventListener('pointercancel',()=>{
     if(!tripDrag||tripDrag.el!==row)return;
-    tripDrag.rowEls.forEach(el=>{el.style.transform='';el.classList.remove('dragging');});
+    tripDrag.rowEls.forEach(el=>{el.style.transform='';el.classList.remove('dragging','shifting');});
     tripDrag=null;
   });
   const check=document.createElement('div');check.className='icheck'+(isP?(state==='full'?' on':state==='partial'?' partial':''):(item.checked?' on':''));check.classList.add(isP?'is-parent':'clickable');
@@ -1913,11 +1917,10 @@ function renderDefaults() {
           defDrag.curIdx = targetIdx;
           defDrag.rowEls.forEach((el, i) => {
             if (el === row) return;
-            if (defDrag.fromIdx < targetIdx) {
-              el.style.transform = (i > defDrag.fromIdx && i <= targetIdx) ? `translateY(-${defDrag.rowH}px)` : '';
-            } else {
-              el.style.transform = (i >= targetIdx && i < defDrag.fromIdx) ? `translateY(${defDrag.rowH}px)` : '';
-            }
+            const shift = defDrag.fromIdx < targetIdx ? (i > defDrag.fromIdx && i <= targetIdx) : (i >= targetIdx && i < defDrag.fromIdx);
+            const dir = defDrag.fromIdx < targetIdx ? -1 : 1;
+            if (shift) { el.classList.add('shifting'); el.style.transform = `translateY(${dir * defDrag.rowH}px)`; }
+            else { el.style.transform = ''; el.classList.remove('shifting'); }
           });
         }
       });
@@ -1926,7 +1929,7 @@ function renderDefaults() {
         if (!defDrag || defDrag.el !== row) return;
         const { sectionId, fromIdx, curIdx, rowEls, order: snapOrder } = defDrag;
         defDrag = null;
-        rowEls.forEach(el => { el.style.transform = ''; el.classList.remove('dragging'); });
+        rowEls.forEach(el => { el.style.transform = ''; el.classList.remove('dragging', 'shifting'); });
         if (curIdx !== fromIdx) {
           const [moved] = snapOrder.splice(fromIdx, 1);
           snapOrder.splice(curIdx, 0, moved);
@@ -1938,7 +1941,7 @@ function renderDefaults() {
 
       handle.addEventListener('pointercancel', () => {
         if (!defDrag || defDrag.el !== row) return;
-        defDrag.rowEls.forEach(el => { el.style.transform = ''; el.classList.remove('dragging'); });
+        defDrag.rowEls.forEach(el => { el.style.transform = ''; el.classList.remove('dragging', 'shifting'); });
         defDrag = null;
       });
 
