@@ -1076,12 +1076,13 @@ function bpTab(tab) {
 // CANVAS HELPERS
 // ─────────────────────────────────────────────
 function uid() { return 'g' + Math.random().toString(36).slice(2, 8); }
-function drawCal(c){const s=devicePixelRatio||1;c.width=16*s;c.height=16*s;c.style.width='16px';c.style.height='16px';const x=c.getContext('2d');x.scale(s,s);x.strokeStyle='#777';x.lineWidth=1.2;x.lineCap='round';x.lineJoin='round';x.strokeRect(2,3,12,12);x.beginPath();x.moveTo(2,7);x.lineTo(14,7);x.stroke();x.beginPath();x.moveTo(5.5,1.5);x.lineTo(5.5,4.5);x.stroke();x.beginPath();x.moveTo(10.5,1.5);x.lineTo(10.5,4.5);x.stroke();}
-function drawTrash(c,red){const s=devicePixelRatio||1;c.width=13*s;c.height=14*s;c.style.width='13px';c.style.height='14px';const x=c.getContext('2d');x.scale(s,s);x.strokeStyle=red?'#c0392b':'var(--color-text-tertiary)';x.lineWidth=1.2;x.lineCap='round';x.lineJoin='round';x.beginPath();x.moveTo(1,4);x.lineTo(12,4);x.stroke();x.beginPath();x.moveTo(4.5,4);x.lineTo(4.5,2.5);x.lineTo(8.5,2.5);x.lineTo(8.5,4);x.stroke();x.beginPath();x.moveTo(2.5,4);x.lineTo(3,12);x.lineTo(10,12);x.lineTo(10.5,4);x.stroke();x.beginPath();x.moveTo(6.5,6);x.lineTo(6.5,10);x.stroke();x.beginPath();x.moveTo(4.5,6);x.lineTo(4.8,10);x.stroke();x.beginPath();x.moveTo(8.5,6);x.lineTo(8.2,10);x.stroke();}
-function drawCheck(c,state){const s=devicePixelRatio||1;const sz=parseInt(c.style.width)||10;c.width=sz*s;c.height=sz*s;const x=c.getContext('2d');x.scale(s,s);if(state==='full'){x.strokeStyle='var(--color-background-primary)';x.lineWidth=sz>12?1.8:1.5;x.lineCap='round';x.lineJoin='round';x.beginPath();x.moveTo(sz*.15,sz*.5);x.lineTo(sz*.4,sz*.78);x.lineTo(sz*.85,sz*.15);x.stroke();}else if(state==='partial'){x.strokeStyle='var(--color-background-primary)';x.lineWidth=sz>12?2:1.6;x.lineCap='round';x.beginPath();x.moveTo(sz*.2,sz*.5);x.lineTo(sz*.8,sz*.5);x.stroke();}}
-function drawExpand(c){const s=devicePixelRatio||1;c.width=10*s;c.height=10*s;c.style.width='10px';c.style.height='10px';const x=c.getContext('2d');x.scale(s,s);x.strokeStyle='var(--color-text-secondary)';x.lineWidth=1.5;x.lineCap='round';x.lineJoin='round';x.beginPath();x.moveTo(3,2);x.lineTo(7,5);x.lineTo(3,8);x.stroke();}
-function drawSuitcase(c){const s=devicePixelRatio||1;c.width=28*s;c.height=28*s;c.style.width='28px';c.style.height='28px';const x=c.getContext('2d');x.scale(s,s);x.strokeStyle='var(--color-text-primary)';x.lineWidth=1.5;x.lineCap='round';x.lineJoin='round';if(x.roundRect)x.roundRect(4,9,20,14,2);else x.rect(4,9,20,14);x.stroke();x.beginPath();x.moveTo(10,9);x.lineTo(10,6);x.lineTo(18,6);x.lineTo(18,9);x.stroke();x.beginPath();x.moveTo(4,16);x.lineTo(24,16);x.stroke();}
-function drawBackpack(c){const s=devicePixelRatio||1;c.width=28*s;c.height=28*s;c.style.width='28px';c.style.height='28px';const x=c.getContext('2d');x.scale(s,s);x.strokeStyle='var(--color-text-primary)';x.lineWidth=1.5;x.lineCap='round';x.lineJoin='round';if(x.roundRect)x.roundRect(7,5,14,18,2);else x.rect(7,5,14,18);x.stroke();x.beginPath();x.moveTo(7,11);x.lineTo(21,11);x.stroke();x.beginPath();x.moveTo(9,23);x.bezierCurveTo(7,18,6,13,8,11);x.stroke();x.beginPath();x.moveTo(19,23);x.bezierCurveTo(21,18,22,13,20,11);x.stroke();if(x.roundRect)x.roundRect(9,14,10,7,1.5);else x.rect(9,14,10,7);x.stroke();}
+function cv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function drawCal(c){const s=devicePixelRatio||1;c.width=16*s;c.height=16*s;c.style.width='16px';c.style.height='16px';const x=c.getContext('2d');x.scale(s,s);x.strokeStyle=cv('--color-text-tertiary');x.lineWidth=1.2;x.lineCap='round';x.lineJoin='round';x.strokeRect(2,3,12,12);x.beginPath();x.moveTo(2,7);x.lineTo(14,7);x.stroke();x.beginPath();x.moveTo(5.5,1.5);x.lineTo(5.5,4.5);x.stroke();x.beginPath();x.moveTo(10.5,1.5);x.lineTo(10.5,4.5);x.stroke();}
+function drawTrash(c,red){const s=devicePixelRatio||1;c.width=13*s;c.height=14*s;c.style.width='13px';c.style.height='14px';const x=c.getContext('2d');x.scale(s,s);x.strokeStyle=red?'#c0392b':cv('--color-text-tertiary');x.lineWidth=1.2;x.lineCap='round';x.lineJoin='round';x.beginPath();x.moveTo(1,4);x.lineTo(12,4);x.stroke();x.beginPath();x.moveTo(4.5,4);x.lineTo(4.5,2.5);x.lineTo(8.5,2.5);x.lineTo(8.5,4);x.stroke();x.beginPath();x.moveTo(2.5,4);x.lineTo(3,12);x.lineTo(10,12);x.lineTo(10.5,4);x.stroke();x.beginPath();x.moveTo(6.5,6);x.lineTo(6.5,10);x.stroke();x.beginPath();x.moveTo(4.5,6);x.lineTo(4.8,10);x.stroke();x.beginPath();x.moveTo(8.5,6);x.lineTo(8.2,10);x.stroke();}
+function drawCheck(c,state){const s=devicePixelRatio||1;const sz=parseInt(c.style.width)||10;c.width=sz*s;c.height=sz*s;const x=c.getContext('2d');x.scale(s,s);if(state==='full'){x.strokeStyle=cv('--color-background-primary');x.lineWidth=sz>12?1.8:1.5;x.lineCap='round';x.lineJoin='round';x.beginPath();x.moveTo(sz*.15,sz*.5);x.lineTo(sz*.4,sz*.78);x.lineTo(sz*.85,sz*.15);x.stroke();}else if(state==='partial'){x.strokeStyle=cv('--color-background-primary');x.lineWidth=sz>12?2:1.6;x.lineCap='round';x.beginPath();x.moveTo(sz*.2,sz*.5);x.lineTo(sz*.8,sz*.5);x.stroke();}}
+function drawExpand(c){const s=devicePixelRatio||1;c.width=10*s;c.height=10*s;c.style.width='10px';c.style.height='10px';const x=c.getContext('2d');x.scale(s,s);x.strokeStyle=cv('--color-text-secondary');x.lineWidth=1.5;x.lineCap='round';x.lineJoin='round';x.beginPath();x.moveTo(3,2);x.lineTo(7,5);x.lineTo(3,8);x.stroke();}
+function drawSuitcase(c){const s=devicePixelRatio||1;c.width=28*s;c.height=28*s;c.style.width='28px';c.style.height='28px';const x=c.getContext('2d');x.scale(s,s);x.strokeStyle=cv('--color-text-primary');x.lineWidth=1.5;x.lineCap='round';x.lineJoin='round';if(x.roundRect)x.roundRect(4,9,20,14,2);else x.rect(4,9,20,14);x.stroke();x.beginPath();x.moveTo(10,9);x.lineTo(10,6);x.lineTo(18,6);x.lineTo(18,9);x.stroke();x.beginPath();x.moveTo(4,16);x.lineTo(24,16);x.stroke();}
+function drawBackpack(c){const s=devicePixelRatio||1;c.width=28*s;c.height=28*s;c.style.width='28px';c.style.height='28px';const x=c.getContext('2d');x.scale(s,s);x.strokeStyle=cv('--color-text-primary');x.lineWidth=1.5;x.lineCap='round';x.lineJoin='round';if(x.roundRect)x.roundRect(7,5,14,18,2);else x.rect(7,5,14,18);x.stroke();x.beginPath();x.moveTo(7,11);x.lineTo(21,11);x.stroke();x.beginPath();x.moveTo(9,23);x.bezierCurveTo(7,18,6,13,8,11);x.stroke();x.beginPath();x.moveTo(19,23);x.bezierCurveTo(21,18,22,13,20,11);x.stroke();if(x.roundRect)x.roundRect(9,14,10,7,1.5);else x.rect(9,14,10,7);x.stroke();}
 function initHome(){const ct=document.getElementById('home-icon-trip'),cb=document.getElementById('home-icon-bp');if(ct&&!ct._drawn){const c=document.createElement('canvas');ct.appendChild(c);drawSuitcase(c);ct._drawn=true;}if(cb&&!cb._drawn){const c=document.createElement('canvas');cb.appendChild(c);drawBackpack(c);cb._drawn=true;}}
 
 // ─────────────────────────────────────────────
@@ -1537,15 +1538,17 @@ function renderTemplates(){
 // TRIPS
 // ─────────────────────────────────────────────
 function makeTripCard(trip, isArchived){
-  const card=document.createElement('div');card.className='trip-card';
+  const card=document.createElement('div');card.className='trip-card';card.style.flexDirection='column';card.style.gap='10px';
   if(isArchived)card.style.opacity='0.65';
   const d=trip.data;
   const isBP=(d.mode==='backpacking');
+  // Top row: icon + info + load button
+  const topRow=document.createElement('div');topRow.style.cssText='display:flex;align-items:center;gap:12px;width:100%';
   const iconWrap=document.createElement('div');iconWrap.className='tile-icon-wrap';iconWrap.style.cssText='width:36px;height:36px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--color-background-secondary)';
   const ic=document.createElement('canvas');iconWrap.appendChild(ic);
   setTimeout(()=>isBP?drawBackpack(ic):drawSuitcase(ic),0);
   const info=document.createElement('div');info.className='trip-card-info';
-  const dateLabel=document.createElement('div');dateLabel.style.cssText='font-size:11px;font-weight:500;letter-spacing:.03em;color:var(--color-text-tertiary);margin-bottom:2px';
+  const dateLabel=document.createElement('div');dateLabel.style.cssText='font-size:11px;font-weight:500;letter-spacing:.03em;color:var(--color-text-tertiary);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
   if(!isBP&&d.depart&&d.returnDate){dateLabel.textContent=`${fmtS(d.depart)} – ${fmtS(d.returnDate)}`;}
   else if(!isBP&&d.depart){dateLabel.textContent=fmtS(d.depart);}
   else{dateLabel.textContent=d.mode==='backpacking'?'Backpacking':'Trip';}
@@ -1554,9 +1557,7 @@ function makeTripCard(trip, isArchived){
   if(!isBP){const tr=d.transport==='plane'?'Flying':'Driving';meta.textContent=`${tr} · Saved ${trip.date}`;}
   else{meta.textContent=`Saved ${trip.date}`;}
   info.appendChild(dateLabel);info.appendChild(nm);info.appendChild(meta);
-  const del=document.createElement('button');del.className='tpl-del';del.textContent='Delete';
-  del.addEventListener('click',async e=>{e.stopPropagation();await deleteTripRecord(trip.id);});
-  const load=document.createElement('button');load.className='primary-btn';load.style.cssText='font-size:12px;padding:5px 12px;flex-shrink:0';load.textContent='Load';
+  const load=document.createElement('button');load.className='primary-btn';load.style.cssText='font-size:12px;padding:5px 14px;flex-shrink:0';load.textContent='Load';
   load.addEventListener('click',e=>{
     e.stopPropagation();
     if(isBP){goBP();}
@@ -1577,19 +1578,24 @@ function makeTripCard(trip, isArchived){
       if(d.destination&&d.depart){fetchWeather(d.destination,d.depart,d.returnDate||d.depart,'l-weather-card');}else{document.getElementById('l-weather-card').style.display='none';}
     }
   });
-  card.appendChild(iconWrap);card.appendChild(info);
+  topRow.appendChild(iconWrap);topRow.appendChild(info);topRow.appendChild(load);
+  // Action row: small text buttons
+  const actRow=document.createElement('div');actRow.style.cssText='display:flex;align-items:center;gap:16px;padding-left:48px';
+  const del=document.createElement('button');del.className='tpl-del';del.textContent='Delete';del.style.fontSize='12px';
+  del.addEventListener('click',async e=>{e.stopPropagation();await deleteTripRecord(trip.id);});
+  actRow.appendChild(del);
   if(isArchived){
-    const restore=document.createElement('button');restore.className='tpl-del';restore.textContent='Restore';restore.style.color='var(--color-text-secondary)';
+    const restore=document.createElement('button');restore.className='tpl-del';restore.textContent='Restore';restore.style.cssText='font-size:12px;color:var(--color-text-secondary)';
     restore.addEventListener('click',async e=>{e.stopPropagation();await unarchiveTrip(trip.id);});
-    card.appendChild(del);card.appendChild(restore);
+    actRow.appendChild(restore);
   } else {
-    const arch=document.createElement('button');arch.className='tpl-del';arch.textContent='Archive';arch.style.color='var(--color-text-tertiary)';
+    const arch=document.createElement('button');arch.className='tpl-del';arch.textContent='Archive';arch.style.cssText='font-size:12px;color:var(--color-text-tertiary)';
     arch.addEventListener('click',async e=>{e.stopPropagation();await archiveTrip(trip.id);});
-    const dup=document.createElement('button');dup.className='tpl-del';dup.textContent='Duplicate';dup.style.color='var(--color-text-secondary)';
+    const dup=document.createElement('button');dup.className='tpl-del';dup.textContent='Duplicate';dup.style.cssText='font-size:12px;color:var(--color-text-secondary)';
     dup.addEventListener('click',async e=>{e.stopPropagation();await duplicateTrip(trip.id);});
-    card.appendChild(del);card.appendChild(arch);card.appendChild(dup);
+    actRow.appendChild(arch);actRow.appendChild(dup);
   }
-  card.appendChild(load);
+  card.appendChild(topRow);card.appendChild(actRow);
   return card;
 }
 
