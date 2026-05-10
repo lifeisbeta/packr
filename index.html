@@ -637,6 +637,7 @@ let tripEditingIdx = null, tripAddOpenSec = null, tripSubAddOpenIdx = null;
 let defaultExtras = {}; // {sectionId: ['custom item']}
 let defaultHidden = {};  // {itemName: true}
 let defaultRenames = {}; // {originalName: 'new name'} for built-in items
+let defaultSectionOrder = {}; // {sectionId: [{t:'b'|'c', n:name}]}
 let defaultEditingItem = null; // {type:'builtin'|'custom', id, name|ei}
 let currentTripDestination = '';
 let dragSrc = null, dragSrcSec = null;
@@ -832,6 +833,7 @@ async function loadDefaultPrefs() {
     defaultExtras = data.data.extras || {};
     defaultHidden = data.data.hidden || {};
     defaultRenames = data.data.renames || {};
+    defaultSectionOrder = data.data.sectionOrder || {};
   }
 }
 
@@ -839,9 +841,21 @@ async function saveDefaultPrefs() {
   const id = getDefaultsId();
   await db.from('trips').upsert({
     id, name: '__trip_defaults__',
-    data: {extras: defaultExtras, hidden: defaultHidden, renames: defaultRenames},
+    data: {extras: defaultExtras, hidden: defaultHidden, renames: defaultRenames, sectionOrder: defaultSectionOrder},
     user_id: currentUser?.id
   });
+}
+
+// Returns the unified ordered item list for a section, creating it if needed
+function getSectionOrder(id) {
+  if (!defaultSectionOrder[id]) {
+    // Build default order: built-ins first, then custom extras
+    defaultSectionOrder[id] = [
+      ...(HARDCODED_SECTIONS[id]?.items || []).map(n => ({t:'b', n})),
+      ...(defaultExtras[id] || []).map(n => ({t:'c', n}))
+    ];
+  }
+  return defaultSectionOrder[id];
 }
 
 // ── ADDON CRUD ──
@@ -1182,23 +1196,17 @@ function buildTripList(){
   const activeAddonNames = addonDefs.filter(a=>addons[a.id]).map(a=>a.name);
   document.getElementById('l-chips').innerHTML=[n+' night'+(n!==1?'s':''),transport==='plane'?'Flying':'Driving',dr,...activeAddonNames].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
   document.getElementById('l-warn').style.display=transport==='plane'?'block':'none';
+  // Qty hints for built-in scalable items
+  const qHints={'T-shirts':scaleQ(2,n),'Button-down shirts':scaleQ(1,n),'Pants':scaleQ(1,n),'Shorts':scaleQ(1,n),'Underwear':scaleQ(2,n),'Swim suit':scaleQ(1,n,true),'Socks':scaleQ(2,n)};
+  // Sub-items for toiletry bag
+  const subItems={'Toiletry bag':[{name:'Toothbrush',checked:false},{name:'Toothpaste',checked:false},{name:'Deodorant',checked:false},{name:'Face wash',checked:false},{name:'Shampoo',checked:false}]};
   const mk=(nm,q,ch)=>({name:defaultRenames[nm]||nm,qty:q||null,checked:false,children:ch||null,expanded:!!ch});
-  const defs=[
-    {id:'wear',rows:[mk('Outfit for travel day'),mk('Light jacket')]},
-    {id:'toi',rows:[mk('Toiletry bag',null,[{name:'Toothbrush',checked:false},{name:'Toothpaste',checked:false},{name:'Deodorant',checked:false},{name:'Face wash',checked:false},{name:'Shampoo',checked:false}])]},
-    {id:'tops',rows:[mk('T-shirts',scaleQ(2,n)),mk('Button-down shirts',scaleQ(1,n))]},
-    {id:'bot',rows:[mk('Pants',scaleQ(1,n)),mk('Shorts',scaleQ(1,n)),mk('Underwear',scaleQ(2,n)),mk('Swim suit',scaleQ(1,n,true))]},
-    {id:'socks',rows:[mk('Socks',scaleQ(2,n))]},
-    {id:'shoes',rows:[mk('Sneakers'),mk('Sandals')]},
-    {id:'out',rows:[mk('Rain jacket')]},
-    {id:'elec',rows:[mk('Phone charger'),mk('Laptop'),mk('Headphones'),mk('Tech pouch')]},
-    {id:'misc',rows:[mk('Meds'),mk('Sunglasses'),mk('Travel pillow'),mk('Water bottle'),mk('Reusable bag')]},
-  ];
-  // Apply user's hidden items and custom extras
-  defs.forEach(sec => {
-    sec.rows = sec.rows.filter(r => !defaultHidden[r.name]);
-    (defaultExtras[sec.id] || []).forEach(name => sec.rows.push(mk(name)));
-  });
+  const defs=Object.keys(HARDCODED_SECTIONS).map(id=>({
+    id,
+    rows: getSectionOrder(id)
+      .filter(e=>e.t==='b'?!defaultHidden[e.n]:true)
+      .map(e=>mk(e.n, qHints[e.n]||null, e.t==='b'?subItems[e.n]||null:null))
+  }));
   // Dynamic add-ons
   addonDefs.forEach(a => {
     if (addons[a.id]) defs.push({id: a.id, rows: a.items.map(nm => mk(nm))});
@@ -1768,61 +1776,61 @@ function renderDefaults() {
     const lbl = document.createElement('div'); lbl.className = 'section-label'; lbl.textContent = sec.label;
     wrap.appendChild(lbl);
 
-    // Built-in items
-    sec.items.forEach(origName => {
-      const displayName = defaultRenames[origName] || origName;
-      const isHid = !!defaultHidden[origName];
-      const isEditing = defaultEditingItem?.type === 'builtin' && defaultEditingItem?.name === origName;
+    const order = getSectionOrder(id);
+    const mkArrow = (label, disabled, fn) => {
+      const b = document.createElement('button'); b.textContent = label; b.disabled = disabled; b.type = 'button';
+      b.style.cssText = 'background:none;border:none;cursor:' + (disabled?'default':'pointer') + ';font-size:11px;color:' + (disabled?'var(--color-border-secondary)':'var(--color-text-secondary)') + ';padding:0;line-height:1;font-family:var(--font-sans);width:16px';
+      if (!disabled) b.addEventListener('click', fn); return b;
+    };
+
+    order.forEach((entry, oi) => {
+      const isBuiltin = entry.t === 'b';
+      const origName = entry.n;
+      const displayName = isBuiltin ? (defaultRenames[origName] || origName) : origName;
+      const isHid = isBuiltin && !!defaultHidden[origName];
+      const isEditing = defaultEditingItem?.id === id && defaultEditingItem?.oi === oi;
+
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+
+      // ↑↓ reorder
+      const reorder = document.createElement('div'); reorder.style.cssText = 'display:flex;flex-direction:column;gap:1px;flex-shrink:0';
+      reorder.appendChild(mkArrow('↑', oi===0, () => { [order[oi-1],order[oi]]=[order[oi],order[oi-1]]; defaultSectionOrder[id]=order; saveDefaultPrefs(); renderDefaults(); }));
+      reorder.appendChild(mkArrow('↓', oi===order.length-1, () => { [order[oi],order[oi+1]]=[order[oi+1],order[oi]]; defaultSectionOrder[id]=order; saveDefaultPrefs(); renderDefaults(); }));
+
+      // Name
       const nm = document.createElement('span');
-      nm.style.cssText = 'flex:1;font-size:14px;cursor:pointer;color:' + (isHid ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)') + ';text-decoration:' + (isHid ? 'line-through' : 'none');
+      nm.style.cssText = 'flex:1;font-size:14px;cursor:pointer;color:' + (isHid ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)') + ';text-decoration:' + (isHid ? 'line-through' : 'none') + ';display:flex;align-items:center;gap:6px';
       nm.textContent = displayName;
-      nm.addEventListener('click', () => { defaultEditingItem = isEditing ? null : {type:'builtin', id, name:origName}; renderDefaults(); });
-      const btn = document.createElement('button');
-      btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;padding:3px 8px;border-radius:4px;flex-shrink:0;' + (isHid ? 'color:var(--color-text-secondary);background:var(--color-background-secondary)' : 'color:#c0392b');
-      btn.textContent = isHid ? 'Restore' : 'Hide';
-      btn.addEventListener('click', () => {
-        if (defaultHidden[origName]) delete defaultHidden[origName]; else defaultHidden[origName] = true;
-        saveDefaultPrefs(); renderDefaults();
-      });
-      row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
+      if (!isBuiltin) nm.insertAdjacentHTML('beforeend','<span style="font-size:11px;color:var(--color-text-tertiary);font-weight:500;background:var(--color-background-secondary);padding:2px 5px;border-radius:3px">custom</span>');
+      nm.addEventListener('click', () => { defaultEditingItem = isEditing ? null : {id, oi}; renderDefaults(); });
+
+      // Action button
+      const btn = document.createElement('button'); btn.type = 'button';
+      if (isBuiltin) {
+        btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;padding:3px 8px;border-radius:4px;flex-shrink:0;' + (isHid ? 'color:var(--color-text-secondary);background:var(--color-background-secondary)' : 'color:#c0392b');
+        btn.textContent = isHid ? 'Restore' : 'Hide';
+        btn.addEventListener('click', () => { if(defaultHidden[origName])delete defaultHidden[origName];else defaultHidden[origName]=true; saveDefaultPrefs(); renderDefaults(); });
+      } else {
+        btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;color:#c0392b;padding:3px 8px;border-radius:4px;flex-shrink:0';
+        btn.textContent = 'Remove';
+        btn.addEventListener('click', () => {
+          defaultExtras[id] = (defaultExtras[id]||[]).filter(n=>n!==origName);
+          defaultSectionOrder[id] = order.filter((_,i)=>i!==oi);
+          defaultEditingItem = null; saveDefaultPrefs(); renderDefaults();
+        });
+      }
+
+      row.appendChild(reorder); row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
+
       if (isEditing) {
         wrap.appendChild(makeDefaultEditPanel(displayName,
-          v => { if (v !== origName) defaultRenames[origName] = v; else delete defaultRenames[origName]; defaultEditingItem = null; saveDefaultPrefs(); renderDefaults(); },
-          () => { defaultEditingItem = null; renderDefaults(); }
-        ));
-      }
-    });
-
-    // Custom extras
-    const extras = defaultExtras[id] || [];
-    extras.forEach((name, ei) => {
-      const isEditing = defaultEditingItem?.type === 'custom' && defaultEditingItem?.id === id && defaultEditingItem?.ei === ei;
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
-      // Reorder buttons
-      const reorder = document.createElement('div'); reorder.style.cssText = 'display:flex;flex-direction:column;gap:1px;flex-shrink:0';
-      const mkArrow = (label, disabled, fn) => {
-        const b = document.createElement('button'); b.textContent = label; b.disabled = disabled; b.type = 'button';
-        b.style.cssText = 'background:none;border:none;cursor:' + (disabled?'default':'pointer') + ';font-size:11px;color:' + (disabled?'var(--color-border-secondary)':'var(--color-text-secondary)') + ';padding:0;line-height:1;font-family:var(--font-sans);width:16px';
-        if (!disabled) b.addEventListener('click', fn); return b;
-      };
-      reorder.appendChild(mkArrow('↑', ei===0, ()=>{ const a=defaultExtras[id];[a[ei-1],a[ei]]=[a[ei],a[ei-1]];saveDefaultPrefs();renderDefaults(); }));
-      reorder.appendChild(mkArrow('↓', ei===extras.length-1, ()=>{ const a=defaultExtras[id];[a[ei],a[ei+1]]=[a[ei+1],a[ei]];saveDefaultPrefs();renderDefaults(); }));
-      const nm = document.createElement('span');
-      nm.style.cssText = 'flex:1;font-size:14px;color:var(--color-text-primary);display:flex;align-items:center;gap:6px;cursor:pointer';
-      nm.innerHTML = name + ' <span style="font-size:11px;color:var(--color-text-tertiary);font-weight:500;background:var(--color-background-secondary);padding:2px 5px;border-radius:3px">custom</span>';
-      nm.addEventListener('click', () => { defaultEditingItem = isEditing ? null : {type:'custom', id, ei}; renderDefaults(); });
-      const btn = document.createElement('button');
-      btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;color:#c0392b;padding:3px 8px;border-radius:4px;flex-shrink:0';
-      btn.textContent = 'Remove';
-      btn.addEventListener('click', () => { defaultExtras[id]=(defaultExtras[id]||[]).filter((_,i)=>i!==ei); defaultEditingItem=null; saveDefaultPrefs(); renderDefaults(); });
-      row.appendChild(reorder); row.appendChild(nm); row.appendChild(btn); wrap.appendChild(row);
-      if (isEditing) {
-        wrap.appendChild(makeDefaultEditPanel(name,
-          v => { defaultExtras[id][ei] = v; defaultEditingItem = null; saveDefaultPrefs(); renderDefaults(); },
-          () => { defaultEditingItem = null; renderDefaults(); }
+          v => {
+            if (isBuiltin) { if(v!==origName)defaultRenames[origName]=v; else delete defaultRenames[origName]; }
+            else { defaultExtras[id]=(defaultExtras[id]||[]).map(n=>n===origName?v:n); order[oi]={t:'c',n:v}; defaultSectionOrder[id]=order; }
+            defaultEditingItem=null; saveDefaultPrefs(); renderDefaults();
+          },
+          () => { defaultEditingItem=null; renderDefaults(); }
         ));
       }
     });
@@ -1833,7 +1841,15 @@ function renderDefaults() {
     inp.style.cssText = 'flex:1;padding:8px 12px;font-size:14px;font-family:var(--font-sans);border:0.5px solid var(--color-border-secondary);border-radius:8px;outline:none;background:var(--color-background-primary);color:var(--color-text-primary)';
     const addBtn = document.createElement('button'); addBtn.className='primary-btn'; addBtn.textContent='Add';
     addBtn.style.cssText = 'background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans)';
-    function doAdd() { const v=inp.value.trim(); if(!v)return; if(!defaultExtras[id])defaultExtras[id]=[]; if(!defaultExtras[id].includes(v)){defaultExtras[id].push(v);saveDefaultPrefs();renderDefaults();}else{inp.value='';} }
+    function doAdd() {
+      const v=inp.value.trim(); if(!v)return;
+      if(!defaultExtras[id])defaultExtras[id]=[];
+      if(!defaultExtras[id].includes(v)){
+        defaultExtras[id].push(v);
+        getSectionOrder(id).push({t:'c',n:v});
+        saveDefaultPrefs(); renderDefaults();
+      } else { inp.value=''; }
+    }
     addBtn.addEventListener('click', doAdd);
     inp.addEventListener('keydown', e => { if(e.key==='Enter') doAdd(); });
     addRow.appendChild(inp); addRow.appendChild(addBtn); wrap.appendChild(addRow);
@@ -2286,7 +2302,7 @@ async function signOut() {
   currentUser = null;
   trips = []; gearInventory = []; templates = []; addonDefs = [];
   loadout = {}; loadoutName = 'Untitled Loadout';
-  defaultExtras = {}; defaultHidden = {}; defaultRenames = {}; defaultEditingItem = null;
+  defaultExtras = {}; defaultHidden = {}; defaultRenames = {}; defaultSectionOrder = {}; defaultEditingItem = null;
   document.getElementById('auth-email').value = '';
   document.getElementById('auth-password').value = '';
   document.getElementById('auth-error').textContent = '';
