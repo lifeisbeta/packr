@@ -644,6 +644,7 @@ let defaultExtras = {}; // {sectionId: ['custom item']}
 let defaultHidden = {};  // {itemName: true}
 let defaultRenames = {}; // {originalName: 'new name'} for built-in items
 let defaultSectionOrder = {}; // {sectionId: [{t:'b'|'c', n:name}]}
+let defaultQty = {}; // {itemName: qty} — user-set default quantities
 let defaultEditingItem = null; // {type:'builtin'|'custom', id, name|ei}
 let defDrag = null; // active drag state for defaults screen
 let currentTripDestination = '';
@@ -841,6 +842,7 @@ async function loadDefaultPrefs() {
     defaultHidden = data.data.hidden || {};
     defaultRenames = data.data.renames || {};
     defaultSectionOrder = data.data.sectionOrder || {};
+    defaultQty = data.data.qty || {};
   }
 }
 
@@ -848,7 +850,7 @@ async function saveDefaultPrefs() {
   const id = getDefaultsId();
   await db.from('trips').upsert({
     id, name: '__trip_defaults__',
-    data: {extras: defaultExtras, hidden: defaultHidden, renames: defaultRenames, sectionOrder: defaultSectionOrder},
+    data: {extras: defaultExtras, hidden: defaultHidden, renames: defaultRenames, sectionOrder: defaultSectionOrder, qty: defaultQty},
     user_id: currentUser?.id
   });
 }
@@ -1203,7 +1205,7 @@ function buildTripList(){
   const activeAddonNames = addonDefs.filter(a=>addons[a.id]).map(a=>a.name);
   document.getElementById('l-chips').innerHTML=[n+' night'+(n!==1?'s':''),transport==='plane'?'Flying':'Driving',dr,...activeAddonNames].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
   document.getElementById('l-warn').style.display=transport==='plane'?'block':'none';
-  // Qty hints for built-in scalable items
+  // Qty hints for built-in scalable items (user overrides via defaultQty take priority)
   const qHints={'T-shirts':scaleQ(2,n),'Button-down shirts':scaleQ(1,n),'Pants':scaleQ(1,n),'Shorts':scaleQ(1,n),'Underwear':scaleQ(2,n),'Swim suit':scaleQ(1,n,true),'Socks':scaleQ(2,n)};
   // Sub-items for toiletry bag
   const subItems={'Toiletry bag':[{name:'Toothbrush',checked:false},{name:'Toothpaste',checked:false},{name:'Deodorant',checked:false},{name:'Face wash',checked:false},{name:'Shampoo',checked:false}]};
@@ -1212,7 +1214,11 @@ function buildTripList(){
     id,
     rows: getSectionOrder(id)
       .filter(e=>e.t==='b'?!defaultHidden[e.n]:true)
-      .map(e=>mk(e.n, qHints[e.n]||null, e.t==='b'?subItems[e.n]||null:null))
+      .map(e=>{
+        const dq = defaultQty[e.n]; // user-set qty override (keyed by original name)
+        const q = dq != null ? dq : (qHints[e.n]||null);
+        return mk(e.n, q, e.t==='b'?subItems[e.n]||null:null);
+      })
   }));
   // Dynamic add-ons
   addonDefs.forEach(a => {
@@ -1751,22 +1757,43 @@ function goSettings() {
 }
 function goDefaults() { renderDefaults(); showScreen('s-defaults'); }
 
-function makeDefaultEditPanel(currentVal, onSave, onCancel) {
+function makeDefaultEditPanel(currentVal, currentQty, onSave, onCancel) {
+  // onSave(name, qty)  qty=null means "no override"
   const panel = document.createElement('div');
   panel.className = 'edit-panel';
   panel.style.margin = '0 0 4px 0';
+
+  // Row 1: Name
   const r1 = document.createElement('div'); r1.className = 'ep-name-row';
   const l1 = document.createElement('span'); l1.className = 'ep-label'; l1.textContent = 'Name';
   const ni = document.createElement('input'); ni.className = 'ep-name'; ni.value = currentVal;
   r1.appendChild(l1); r1.appendChild(ni);
-  const r2 = document.createElement('div'); r2.className = 'ep-bottom-row';
+
+  // Row 2: Qty stepper
+  const r2 = document.createElement('div'); r2.className = 'ep-name-row';
+  const l2 = document.createElement('span'); l2.className = 'ep-label'; l2.textContent = 'Qty';
+  let qVal = currentQty != null ? currentQty : 1;
+  const stepper = document.createElement('div'); stepper.className = 'ep-qty-stepper';
+  const qMinus = document.createElement('button'); qMinus.className = 'ep-qty-btn'; qMinus.textContent = '−'; qMinus.type = 'button';
+  const qValEl = document.createElement('span'); qValEl.className = 'ep-qty-val'; qValEl.textContent = qVal;
+  const qPlus = document.createElement('button'); qPlus.className = 'ep-qty-btn'; qPlus.textContent = '+'; qPlus.type = 'button';
+  qMinus.disabled = qVal <= 1;
+  function updateQ(v) { qVal = v; qValEl.textContent = qVal; qMinus.disabled = qVal <= 1; }
+  qMinus.addEventListener('click', () => updateQ(Math.max(1, qVal - 1)));
+  qPlus.addEventListener('click', () => updateQ(qVal + 1));
+  stepper.appendChild(qMinus); stepper.appendChild(qValEl); stepper.appendChild(qPlus);
+  r2.appendChild(l2); r2.appendChild(stepper);
+
+  // Row 3: Cancel / Done
+  const r3 = document.createElement('div'); r3.className = 'ep-bottom-row';
   const gap = document.createElement('div'); gap.style.flex = '1';
   const cb = document.createElement('button'); cb.className = 'ep-cancel'; cb.textContent = 'Cancel'; cb.type = 'button';
   const sb = document.createElement('button'); sb.className = 'ep-save'; sb.textContent = 'Done'; sb.type = 'button';
-  r2.appendChild(gap); r2.appendChild(cb); r2.appendChild(sb);
-  panel.appendChild(r1); panel.appendChild(r2);
+  r3.appendChild(gap); r3.appendChild(cb); r3.appendChild(sb);
+
+  panel.appendChild(r1); panel.appendChild(r2); panel.appendChild(r3);
   let done = false;
-  function save() { if (done) return; done = true; const v = ni.value.trim(); if (v) onSave(v); else onCancel(); }
+  function save() { if (done) return; done = true; const v = ni.value.trim(); if (v) onSave(v, qVal); else onCancel(); }
   cb.addEventListener('click', () => { if (!done) { done = true; onCancel(); } });
   sb.addEventListener('click', save);
   ni.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } else if (e.key === 'Escape') { if (!done) { done = true; onCancel(); } } });
@@ -1874,11 +1901,13 @@ function renderDefaults() {
         defDrag = null;
       });
 
-      // Name
+      // Name (with ×qty badge if qty ≥ 2 and not editing)
+      const curQty = defaultQty[origName] != null ? defaultQty[origName] : null;
       const nm = document.createElement('span');
       nm.style.cssText = 'flex:1;font-size:14px;cursor:pointer;color:' + (isHid ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)') + ';text-decoration:' + (isHid ? 'line-through' : 'none') + ';display:flex;align-items:center;gap:6px';
       nm.textContent = displayName;
       if (!isBuiltin) nm.insertAdjacentHTML('beforeend','<span style="font-size:11px;color:var(--color-text-tertiary);font-weight:500;background:var(--color-background-secondary);padding:2px 5px;border-radius:3px">custom</span>');
+      if (!isEditing && curQty != null && curQty >= 2) nm.insertAdjacentHTML('beforeend','<span class="iqty">×'+curQty+'</span>');
       nm.addEventListener('click', () => { defaultEditingItem = isEditing ? null : {id, oi}; renderDefaults(); });
 
       // Action button
@@ -1901,10 +1930,12 @@ function renderDefaults() {
       rowsWrap.appendChild(row);
 
       if (isEditing) {
-        rowsWrap.appendChild(makeDefaultEditPanel(displayName,
-          v => {
+        rowsWrap.appendChild(makeDefaultEditPanel(displayName, curQty,
+          (v, q) => {
             if (isBuiltin) { if(v!==origName)defaultRenames[origName]=v; else delete defaultRenames[origName]; }
             else { defaultExtras[id]=(defaultExtras[id]||[]).map(n=>n===origName?v:n); order[oi]={t:'c',n:v}; defaultSectionOrder[id]=order; }
+            // Save qty override (keyed by original name for builtins, display name for custom)
+            if (q != null && q >= 1) defaultQty[origName] = q; else delete defaultQty[origName];
             defaultEditingItem=null; saveDefaultPrefs(); renderDefaults();
           },
           () => { defaultEditingItem=null; renderDefaults(); }
