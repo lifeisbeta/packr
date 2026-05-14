@@ -473,6 +473,18 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
   </div>
 </div>
 
+<!-- QTY UPDATE SHEET -->
+<div class="modal-overlay hidden" id="qty-update-modal">
+  <div class="modal-sheet">
+    <div class="modal-title" id="qty-update-title">Update quantities?</div>
+    <div id="qty-update-body" style="font-size:14px;color:var(--color-text-secondary);line-height:1.6"></div>
+    <div class="modal-row">
+      <button class="modal-cancel" onclick="closeQtyModal()">Keep as-is</button>
+      <button class="modal-save" id="qty-update-btn" onclick="applyQtyUpdate()">Update quantities</button>
+    </div>
+  </div>
+</div>
+
 <!-- ONBOARDING -->
 <div id="s-onboard" class="screen">
   <div style="padding-top:1rem">
@@ -1286,7 +1298,11 @@ function buildTripList(){
   if(destV&&depV){fetchWeather(destV,depV,retV||depV,'l-weather-card');}else{document.getElementById('l-weather-card').style.display='none';}
 }
 
+let _editStartNights = null;
+let _pendingQtyChanges = []; // [{item, newQty}]
+
 function editCurrentTrip() {
+  _editStartNights = computedNights;
   if (currentTripId) {
     const trip = trips.find(t => t.id === currentTripId);
     if (trip) {
@@ -1322,6 +1338,10 @@ function editCurrentTrip() {
   }
   showScreen('s-trip-setup');
 }
+// Base quantities for scalable items (must match buildTripList qHints bases)
+const SCALE_BASES = {'T-shirts':2,'Button-down shirts':1,'Pants':1,'Shorts':1,'Underwear':2,'Socks':2};
+// Swim suit is fixed (fx=true) — never scaled, so excluded
+
 function updateTripDetails() {
   const name=document.getElementById('f-name').value.trim()||'Trip';
   const d=document.getElementById('f-depart').value,r=document.getElementById('f-return').value;
@@ -1334,8 +1354,56 @@ function updateTripDetails() {
   currentTripDestination = document.getElementById('f-dest').value.trim();
   showScreen('s-trip-list');updateTP();
   if(currentTripDestination&&d){fetchWeather(currentTripDestination,d,r||d,'l-weather-card');}else{document.getElementById('l-weather-card').style.display='none';}
-  // Auto-save so the user doesn't have to hit Save Trip manually
   saveTrip();
+  // Check if nights changed and scalable items need updating
+  if (_editStartNights !== null && _editStartNights !== computedNights) {
+    const n = computedNights;
+    _pendingQtyChanges = [];
+    for (const [itemName, base] of Object.entries(SCALE_BASES)) {
+      const newQty = scaleQ(base, n);
+      const item = tripItems.find(i => i.name === itemName && !i._pendingDelete && !i._placeholder);
+      if (item && item.qty !== newQty) {
+        _pendingQtyChanges.push({item, newQty});
+      }
+    }
+    if (_pendingQtyChanges.length > 0) {
+      showQtyModal(_editStartNights, computedNights);
+    }
+  }
+  _editStartNights = null;
+}
+
+function showQtyModal(oldN, newN) {
+  const hasChecked = _pendingQtyChanges.some(c => c.item.checked);
+  let html = `<p style="margin:0 0 10px">Your trip changed from <strong>${oldN} night${oldN!==1?'s':''}</strong> to <strong>${newN} night${newN!==1?'s':''}</strong>. These items would be updated:</p>`;
+  html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:2px">';
+  for (const {item, newQty} of _pendingQtyChanges) {
+    const checked = item.checked ? ' <span style="font-size:12px;color:var(--color-text-tertiary)">(currently checked off)</span>' : '';
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--color-background-secondary);border-radius:8px;font-size:14px">
+      <span style="color:var(--color-text-primary)">${item.name}${checked}</span>
+      <span style="color:var(--color-text-tertiary)">qty <strong style="color:var(--color-text-primary)">${item.qty??1}</strong> → <strong style="color:var(--color-text-primary)">${newQty}</strong></span>
+    </div>`;
+  }
+  html += '</div>';
+  if (hasChecked) {
+    html += `<p style="margin:10px 0 0;font-size:13px;color:var(--color-text-tertiary)">⚠️ Items currently checked off will be unchecked since the quantity is changing.</p>`;
+  }
+  document.getElementById('qty-update-body').innerHTML = html;
+  document.getElementById('qty-update-modal').classList.remove('hidden');
+}
+
+function closeQtyModal() {
+  document.getElementById('qty-update-modal').classList.add('hidden');
+  _pendingQtyChanges = [];
+}
+
+function applyQtyUpdate() {
+  for (const {item, newQty} of _pendingQtyChanges) {
+    item.qty = newQty;
+    if (item.checked) item.checked = false;
+  }
+  closeQtyModal();
+  renderTripList();updateTP();autoSave();
 }
 function onBuildOrUpdate(){if(currentTripId){updateTripDetails();}else{buildTripList();}}
 
