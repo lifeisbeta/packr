@@ -159,7 +159,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .sub-item-name.done{text-decoration:line-through;color:var(--color-text-tertiary)}
 .sub-add-trigger{display:flex;align-items:center;gap:8px;padding:7px 0;cursor:pointer;opacity:0.4;transition:opacity 0.15s;border-top:0.5px dashed var(--color-border-tertiary)}
 .sub-add-trigger:hover{opacity:0.8}
-.sub-add-trigger-icon{width:16px;height:16px;border-radius:50%;border:0.5px solid var(--color-text-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;line-height:1;color:var(--color-text-tertiary)}
+.sub-add-trigger-icon{width:16px;height:16px;border-radius:50%;border:0.5px solid var(--color-text-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--color-text-tertiary)}
 .sub-add-trigger-label{font-size:13px;color:var(--color-text-tertiary)}
 .sub-add-expanded{border-top:0.5px dashed var(--color-border-tertiary);padding:7px 0 2px;display:flex;flex-direction:column;gap:7px}
 .sub-add-input{flex:1;font-size:14px;font-family:var(--font-sans);color:var(--color-text-primary);background:transparent;border:none;outline:none;padding:2px 0;min-width:0}
@@ -181,7 +181,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .ep-add-sub{font-size:12px;color:var(--color-text-tertiary);cursor:pointer;background:none;border:none;font-family:var(--font-sans);padding:4px 0 0;display:flex;align-items:center;gap:4px}
 .add-trigger{display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;opacity:0.4;transition:opacity 0.15s;border-top:0.5px dashed var(--color-border-tertiary)}
 .add-trigger:hover{opacity:0.8}
-.add-trigger-icon{width:18px;height:18px;border-radius:50%;border:0.5px solid var(--color-text-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;line-height:1;color:var(--color-text-tertiary)}
+.add-trigger-icon{width:18px;height:18px;border-radius:50%;border:0.5px solid var(--color-text-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--color-text-tertiary)}
 .add-trigger-label{font-size:14px;color:var(--color-text-tertiary)}
 .add-expanded{border-top:0.5px dashed var(--color-border-tertiary);padding:8px 0 4px;display:flex;flex-direction:column;gap:8px}
 .add-input-row{display:flex;align-items:center;gap:8px}
@@ -1475,7 +1475,7 @@ function makeTRow(item,secId){
     if(tripSubAddOpenIdx===idx){
       const exp=document.createElement('div');exp.className='sub-add-expanded';const ir=document.createElement('div');ir.style.cssText='display:flex;align-items:center;gap:8px';const inp=document.createElement('input');inp.className='sub-add-input';inp.placeholder='Sub-item name…';inp.dataset.idx=idx;ir.appendChild(inp);
       const act=document.createElement('div');act.className='sub-add-actions';const cb=document.createElement('button');cb.className='sub-add-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{tripSubAddOpenIdx=null;renderTripList();});const ab=document.createElement('button');ab.className='sub-add-save';ab.textContent='Add';let com=false;function commit(){if(com)return;const v=inp.value.trim();if(!v)return;com=true;if(!item.children)item.children=[];item.children.push({name:v,checked:false});tripSubAddOpenIdx=null;renderTripList();autoSave();}ab.addEventListener('click',commit);inp.addEventListener('keydown',e=>{if(e.key==='Enter')commit();if(e.key==='Escape'){tripSubAddOpenIdx=null;renderTripList();}});act.appendChild(cb);act.appendChild(ab);exp.appendChild(ir);exp.appendChild(act);sl.appendChild(exp);setTimeout(()=>inp.focus(),30);
-    }else{const trig=document.createElement('div');trig.className='sub-add-trigger';const tic=document.createElement('div');tic.className='sub-add-trigger-icon';tic.textContent='+';const tlb=document.createElement('span');tlb.className='sub-add-trigger-label';tlb.textContent='Add sub-item';trig.appendChild(tic);trig.appendChild(tlb);trig.addEventListener('click',()=>{tripSubAddOpenIdx=idx;renderTripList();});sl.appendChild(trig);}
+    }else{const trig=document.createElement('div');trig.className='sub-add-trigger';const tic=document.createElement('div');tic.className='sub-add-trigger-icon';tic.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="5" y1="1" x2="5" y2="9"/><line x1="1" y1="5" x2="9" y2="5"/></svg>';const tlb=document.createElement('span');tlb.className='sub-add-trigger-label';tlb.textContent='Add sub-item';trig.appendChild(tic);trig.appendChild(tlb);trig.addEventListener('click',()=>{tripSubAddOpenIdx=idx;renderTripList();});sl.appendChild(trig);}
     row._sl=sl;
   }
   return row;
@@ -1520,7 +1520,7 @@ tripAddOpenSec=null;renderTripList();});const ab=document.createElement('button'
 // Remove placeholder if present for this section
 const phi=tripItems.findIndex(i=>i.sec===secId&&i._placeholder);if(phi>=0)tripItems.splice(phi,1);
 tripItems.push({sec:secId,name:v,qty:q>=1?q:null,checked:false,children:null,expanded:false});tripAddOpenSec=null;renderTripList();autoSave();}ab.addEventListener('click',commit);nn.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();nq.focus();}else if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});nq.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});ar.appendChild(cb);ar.appendChild(ab);wrap.appendChild(ir);wrap.appendChild(ar);setTimeout(()=>nn.focus(),30);return wrap;
-  }else{const trig=document.createElement('div');trig.className='add-trigger';const tic=document.createElement('div');tic.className='add-trigger-icon';tic.textContent='+';const tlb=document.createElement('span');tlb.className='add-trigger-label';tlb.textContent='Add item';trig.appendChild(tic);trig.appendChild(tlb);trig.addEventListener('click',()=>{tripAddOpenSec=secId;tripEditingIdx=null;renderTripList();});return trig;}
+  }else{const trig=document.createElement('div');trig.className='add-trigger';const tic=document.createElement('div');tic.className='add-trigger-icon';tic.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="5" y1="1" x2="5" y2="9"/><line x1="1" y1="5" x2="9" y2="5"/></svg>';const tlb=document.createElement('span');tlb.className='add-trigger-label';tlb.textContent='Add item';trig.appendChild(tic);trig.appendChild(tlb);trig.addEventListener('click',()=>{tripAddOpenSec=secId;tripEditingIdx=null;renderTripList();});return trig;}
 }
 let _addGroupOpen = false;
 function makeAddGroupRow(){
@@ -1555,7 +1555,7 @@ function makeAddGroupRow(){
     setTimeout(()=>nn.focus(),30);
   } else {
     const trig=document.createElement('div');trig.className='add-trigger';trig.style.cssText='opacity:0.6';
-    const tic=document.createElement('div');tic.className='add-trigger-icon';tic.textContent='+';
+    const tic=document.createElement('div');tic.className='add-trigger-icon';tic.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="5" y1="1" x2="5" y2="9"/><line x1="1" y1="5" x2="9" y2="5"/></svg>';
     const tlb=document.createElement('span');tlb.className='add-trigger-label';tlb.textContent='Add group';
     trig.appendChild(tic);trig.appendChild(tlb);
     trig.addEventListener('click',()=>{_addGroupOpen=true;tripAddOpenSec=null;tripEditingIdx=null;renderTripList();});
@@ -1697,7 +1697,7 @@ function renderInventory(){
       body.appendChild(wrap);setTimeout(()=>nn.focus(),30);
     } else {
       const trig=document.createElement('div');trig.className='add-trigger';
-      const tic=document.createElement('div');tic.className='add-trigger-icon';tic.textContent='+';
+      const tic=document.createElement('div');tic.className='add-trigger-icon';tic.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="5" y1="1" x2="5" y2="9"/><line x1="1" y1="5" x2="9" y2="5"/></svg>';
       const tlb=document.createElement('span');tlb.className='add-trigger-label';tlb.textContent='Add item';
       trig.appendChild(tic);trig.appendChild(tlb);
       trig.addEventListener('click',()=>{invAddOpenCat=cat;invEditId=null;renderInventory();});
