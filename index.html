@@ -560,13 +560,16 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 <!-- TRIP LIST -->
 <div id="s-trip-list" class="screen">
   <div class="wordmark" onclick="goHome()">← Packr</div>
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem">
-    <div style="flex:1;min-width:0"><h1 class="page-title" id="l-title">Trip</h1><div class="trip-chips" id="l-chips"></div></div>
-    <div style="display:flex;gap:8px;margin-top:4px">
+  <div style="margin-bottom:1.5rem">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between">
+      <h1 class="page-title" id="l-title" style="flex:1;min-width:0;margin:0">Trip</h1>
+      <div style="display:flex;gap:8px;margin-top:4px;flex-shrink:0">
       <button class="ghost-btn" onclick="shareCurrentTrip(this)" style="font-size:12px;padding:6px 12px">Share</button>
       <button class="ghost-btn" onclick="saveTrip(this)" style="font-size:12px;padding:6px 12px">Save</button>
       <button class="ghost-btn" onclick="editCurrentTrip()">← Edit</button>
     </div>
+    </div>
+    <div class="trip-chips" id="l-chips"></div>
   </div>
   <div id="l-weather-card" style="display:none;padding:14px 16px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;margin-bottom:1.25rem;font-size:13px"></div>
   <textarea id="l-notes" placeholder="Add a note… hotel info, confirmation numbers, etc." rows="1" style="width:100%;margin-bottom:1.25rem;padding:10px 12px;font-size:14px;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;outline:none;resize:none;line-height:1.5;box-sizing:border-box;display:block;overflow:hidden" oninput="currentTripNotes=this.value;this.style.height='auto';this.style.height=this.scrollHeight+'px'" onblur="if(currentTripId)autoSave()"></textarea>
