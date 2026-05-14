@@ -683,6 +683,7 @@ document.getElementById('undo-btn').addEventListener('click', () => {
 let transport = 'car', addons = {};
 let addonDefs = []; // [{id, name, description, items:[str]}] loaded from DB
 let tripItems = [], computedNights = 2, currentTripId = null, currentTripNotes = '';
+let customSecLabels = {}; // {secId: 'Display Name'} for user-created groups
 let tripEditingIdx = null, tripAddOpenSec = null, tripSubAddOpenIdx = null;
 let defaultExtras = {}; // {sectionId: ['custom item']}
 let defaultHidden = {};  // {itemName: true}
@@ -1017,7 +1018,8 @@ async function saveTrip(btn) {
   const tripData = {
     mode: 'trip',
     savedDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-    items: tripItems.filter(i=>!i._pendingDelete), transport, addons, nights: computedNights,
+    items: tripItems.filter(i=>!i._pendingDelete&&!i._placeholder), transport, addons, nights: computedNights,
+    customSecLabels,
     depart: document.getElementById('f-depart').value,
     returnDate: document.getElementById('f-return').value,
     destination: document.getElementById('f-dest').value.trim(),
@@ -1271,10 +1273,10 @@ function buildTripList(){
   addonDefs.forEach(a => {
     if (addons[a.id]) defs.push({id: a.id, rows: a.items.map(nm => mk(nm))});
   });
-  currentTripId = null;currentTripNotes='';
+  currentTripId = null;currentTripNotes='';customSecLabels={};
   const notesEl=document.getElementById('l-notes');notesEl.value='';notesEl.style.height='auto';
   tripItems=[];defs.forEach(s=>s.rows.forEach(r=>tripItems.push({sec:s.id,...r})));
-  tripEditingIdx=null;tripAddOpenSec=null;tripSubAddOpenIdx=null;
+  tripEditingIdx=null;tripAddOpenSec=null;tripSubAddOpenIdx=null;_addGroupOpen=false;
   renderTripList();showScreen('s-trip-list');updateTP();
   // Show weather on trip detail page
   const destV=document.getElementById('f-dest').value.trim(),depV=document.getElementById('f-depart').value,retV=document.getElementById('f-return').value;
@@ -1335,15 +1337,18 @@ function updateTripDetails() {
 function onBuildOrUpdate(){if(currentTripId){updateTripDetails();}else{buildTripList();}}
 
 const LMAP_BASE={wear:'Wear on travel day',toi:'Toiletries',tops:'Tops',bot:'Bottoms',socks:'Socks',shoes:'Shoes',out:'Outerwear',elec:'Electronics',misc:'Miscellaneous'};
-function lmap(id){return LMAP_BASE[id]||(addonDefs.find(a=>a.id===id)?.name)||id;}
+function lmap(id){return LMAP_BASE[id]||(addonDefs.find(a=>a.id===id)?.name)||customSecLabels[id]||id;}
 function secTot(secId){return tripItems.filter(i=>i.sec===secId&&!i._pendingDelete).reduce((s,i)=>{const k=i.children&&i.children.length>0;return s+(k?i.children.length:(i.qty&&i.qty>=1?i.qty:1));},0);}
 function childSt(item){if(!item.children||!item.children.length)return null;const t=item.children.length,c=item.children.filter(ch=>ch.checked).length;if(c===0)return 'empty';if(c===t)return 'full';return 'partial';}
 
 function renderTripList(){
-  const secs=[...new Set(tripItems.map(i=>i.sec))],body=document.getElementById('l-body');body.innerHTML='';
+  const knownSecOrder=Object.keys(HARDCODED_SECTIONS).concat(addonDefs.map(a=>a.id));
+  const presentSecs=new Set(tripItems.map(i=>i.sec));
+  const secs=knownSecOrder.filter(s=>presentSecs.has(s)).concat([...presentSecs].filter(s=>!knownSecOrder.includes(s)));
+  const body=document.getElementById('l-body');body.innerHTML='';
   const fsi=tripSubAddOpenIdx;
   secs.forEach(secId=>{
-    const si=tripItems.filter(i=>i.sec===secId),sd=document.createElement('div');
+    const si=tripItems.filter(i=>i.sec===secId&&!i._placeholder),sd=document.createElement('div');
     sd.dataset.sec=secId;
     const hd=document.createElement('div');hd.className='sec-head'+(secId==='wear'?' wear-head':'');
     hd.innerHTML=`<span class="sec-name">${lmap(secId)}</span><span class="sec-count">${secTot(secId)}</span>`;
@@ -1360,6 +1365,8 @@ function renderTripList(){
     });
     sd.appendChild(makeTAR(secId));body.appendChild(sd);
   });
+  // Add Group button at bottom
+  body.appendChild(makeAddGroupRow());
   requestAnimationFrame(()=>{
     document.querySelectorAll('canvas.ck').forEach(c=>{c.style.width=c.style.width||'10px';c.style.height=c.style.height||'10px';drawCheck(c,c.dataset.state||'empty');});
     document.querySelectorAll('canvas.tr').forEach(c=>drawTrash(c,false));
@@ -1505,9 +1512,58 @@ function makeTEP(item,idx){
 function makeTAR(secId){
   if(tripAddOpenSec===secId){
     const wrap=document.createElement('div');wrap.className='add-expanded';const ir=document.createElement('div');ir.className='add-input-row';const nn=document.createElement('input');nn.className='add-name-input';nn.placeholder='Item name…';const qw=document.createElement('div');qw.className='add-qty-wrap';const ql=document.createElement('span');ql.className='add-qty-label';ql.textContent='qty';const nq=document.createElement('input');nq.className='add-qty-input';nq.type='number';nq.min='1';nq.max='20';nq.placeholder='—';qw.appendChild(ql);qw.appendChild(nq);ir.appendChild(nn);ir.appendChild(qw);
-    const ar=document.createElement('div');ar.className='add-action-row';const cb=document.createElement('button');cb.className='add-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{tripAddOpenSec=null;renderTripList();});const ab=document.createElement('button');ab.className='add-save';ab.textContent='Add';let com=false;function commit(){if(com)return;const v=nn.value.trim();if(!v)return;com=true;const q=parseInt(nq.value);tripItems.push({sec:secId,name:v,qty:q>=1?q:null,checked:false,children:null,expanded:false});tripAddOpenSec=null;renderTripList();autoSave();}ab.addEventListener('click',commit);nn.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();nq.focus();}else if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});nq.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});ar.appendChild(cb);ar.appendChild(ab);wrap.appendChild(ir);wrap.appendChild(ar);setTimeout(()=>nn.focus(),30);return wrap;
+    const ar=document.createElement('div');ar.className='add-action-row';const cb=document.createElement('button');cb.className='add-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{
+// If cancelling on a placeholder-only section, remove the section entirely
+const realItems=tripItems.filter(i=>i.sec===secId&&!i._placeholder&&!i._pendingDelete);
+if(realItems.length===0){const phi=tripItems.findIndex(i=>i.sec===secId&&i._placeholder);if(phi>=0)tripItems.splice(phi,1);}
+tripAddOpenSec=null;renderTripList();});const ab=document.createElement('button');ab.className='add-save';ab.textContent='Add';let com=false;function commit(){if(com)return;const v=nn.value.trim();if(!v)return;com=true;const q=parseInt(nq.value);
+// Remove placeholder if present for this section
+const phi=tripItems.findIndex(i=>i.sec===secId&&i._placeholder);if(phi>=0)tripItems.splice(phi,1);
+tripItems.push({sec:secId,name:v,qty:q>=1?q:null,checked:false,children:null,expanded:false});tripAddOpenSec=null;renderTripList();autoSave();}ab.addEventListener('click',commit);nn.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();nq.focus();}else if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});nq.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});ar.appendChild(cb);ar.appendChild(ab);wrap.appendChild(ir);wrap.appendChild(ar);setTimeout(()=>nn.focus(),30);return wrap;
   }else{const trig=document.createElement('div');trig.className='add-trigger';const tic=document.createElement('div');tic.className='add-trigger-icon';tic.textContent='+';const tlb=document.createElement('span');tlb.className='add-trigger-label';tlb.textContent='Add item';trig.appendChild(tic);trig.appendChild(tlb);trig.addEventListener('click',()=>{tripAddOpenSec=secId;tripEditingIdx=null;renderTripList();});return trig;}
 }
+let _addGroupOpen = false;
+function makeAddGroupRow(){
+  const wrap=document.createElement('div');wrap.style.cssText='margin-top:8px;padding:4px 0 16px';
+  if(_addGroupOpen){
+    const ir=document.createElement('div');ir.className='add-input-row';
+    const nn=document.createElement('input');nn.className='add-name-input';nn.placeholder='Group name…';nn.style.cssText='flex:1;font-size:15px';
+    ir.appendChild(nn);
+    const ar=document.createElement('div');ar.className='add-action-row';
+    const cb=document.createElement('button');cb.className='add-cancel';cb.textContent='Cancel';
+    cb.addEventListener('click',()=>{_addGroupOpen=false;renderTripList();});
+    const ab=document.createElement('button');ab.className='add-save';ab.textContent='Add Group';
+    let com=false;
+    function commitGroup(){
+      if(com)return;const v=nn.value.trim();if(!v)return;com=true;
+      // Build a stable ID from the name (lowercase, spaces→underscore, strip non-alnum)
+      const base=v.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+      let secId=base||'custom';
+      // Ensure uniqueness
+      const existing=new Set(tripItems.map(i=>i.sec));
+      if(existing.has(secId)){let n=2;while(existing.has(secId+'_'+n))n++;secId=secId+'_'+n;}
+      customSecLabels[secId]=v;
+      tripItems.push({sec:secId,name:'',qty:null,checked:false,children:null,expanded:false,_placeholder:true});
+      // Open the add-item row for that section immediately
+      tripAddOpenSec=secId;_addGroupOpen=false;
+      renderTripList();autoSave();
+    }
+    ab.addEventListener('click',commitGroup);
+    nn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commitGroup();}else if(e.key==='Escape'){_addGroupOpen=false;renderTripList();}});
+    ar.appendChild(cb);ar.appendChild(ab);
+    wrap.appendChild(ir);wrap.appendChild(ar);
+    setTimeout(()=>nn.focus(),30);
+  } else {
+    const trig=document.createElement('div');trig.className='add-trigger';trig.style.cssText='opacity:0.6';
+    const tic=document.createElement('div');tic.className='add-trigger-icon';tic.textContent='+';
+    const tlb=document.createElement('span');tlb.className='add-trigger-label';tlb.textContent='Add group';
+    trig.appendChild(tic);trig.appendChild(tlb);
+    trig.addEventListener('click',()=>{_addGroupOpen=true;tripAddOpenSec=null;tripEditingIdx=null;renderTripList();});
+    wrap.appendChild(trig);
+  }
+  return wrap;
+}
+
 function updateTP(){let total=0,done=0;tripItems.filter(i=>!i._pendingDelete).forEach(item=>{if(item.children&&item.children.length>0){total+=item.children.length;done+=item.children.filter(c=>c.checked).length;}else{total++;if(item.checked)done++;}});const pct=total>0?Math.round((done/total)*100):0;document.getElementById('p-fill').style.width=pct+'%';document.getElementById('p-text').textContent=done+' of '+total+' items packed';}
 
 // ─────────────────────────────────────────────
@@ -1751,6 +1807,7 @@ function makeTripCard(trip, isArchived){
       tripItems=d.items||[];transport=d.transport||'car';addons=d.addons||{};
       computedNights=d.nights||2;currentTripId=trip.id;currentTripNotes=d.notes||'';
       currentTripDestination=d.destination||'';
+      customSecLabels=d.customSecLabels||{};
       const destInp2=document.getElementById('f-dest');destInp2.value=currentTripDestination;
       // Restore date inputs so autoSave() doesn't clobber saved dates
       const fD2=document.getElementById('f-depart'),fR2=document.getElementById('f-return');
@@ -1844,6 +1901,7 @@ function renderTrips(){
       currentTripId=trip.id;
       currentTripNotes=d.notes||'';
       currentTripDestination=d.destination||'';
+      customSecLabels=d.customSecLabels||{};
       document.getElementById('l-title').textContent=trip.name;
       // Restore date/dest inputs so autoSave() doesn't clobber saved dates
       document.getElementById('f-depart').value=d.depart||'';
