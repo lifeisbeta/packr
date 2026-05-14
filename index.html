@@ -1288,7 +1288,7 @@ function buildTripList(){
   }
   // Hardcoded sub-items (used as fallback if user hasn't customised)
   const hardcodedSubs={'Toiletry bag':[{name:'Toothbrush'},{name:'Toothpaste'},{name:'Deodorant'},{name:'Face wash'},{name:'Shampoo'}]};
-  const mk=(nm,q,ch)=>({name:defaultRenames[nm]||nm,qty:q||null,checked:false,children:ch?ch.map(s=>({name:s.name,checked:false})):null,expanded:!!ch});
+  const mk=(nm,q,ch)=>{const isDyn=!!defaultDynamic[nm];const base=defaultQty[nm]??BUILTIN_SCALE_BASES[nm]??1;return{name:defaultRenames[nm]||nm,qty:q||null,checked:false,children:ch?ch.map(s=>({name:s.name,checked:false})):null,expanded:!!ch,dynamic:isDyn||undefined,baseQty:isDyn?base:undefined};};
   const defs=Object.keys(HARDCODED_SECTIONS).map(id=>({
     id,
     rows: getSectionOrder(id)
@@ -1374,14 +1374,13 @@ function updateTripDetails() {
   if (_editStartNights !== null && _editStartNights !== computedNights) {
     const n = computedNights;
     _pendingQtyChanges = [];
-    for (const [itemName, isDynamic] of Object.entries(defaultDynamic)) {
-      if (!isDynamic) continue;
-      const base = defaultQty[itemName] ?? BUILTIN_SCALE_BASES[itemName] ?? 1;
+    for (const item of tripItems) {
+      if (item._pendingDelete || item._placeholder || item.children !== null) continue;
+      const isDyn = item.dynamic ?? !!defaultDynamic[item.name];
+      if (!isDyn) continue;
+      const base = item.baseQty ?? defaultQty[item.name] ?? BUILTIN_SCALE_BASES[item.name] ?? 1;
       const newQty = scaleQ(base, n);
-      const item = tripItems.find(i => i.name === itemName && !i._pendingDelete && !i._placeholder);
-      if (item && item.qty !== newQty) {
-        _pendingQtyChanges.push({item, newQty});
-      }
+      if (item.qty !== newQty) _pendingQtyChanges.push({item, newQty});
     }
     if (_pendingQtyChanges.length > 0) {
       showQtyModal(_editStartNights, computedNights);
@@ -1539,6 +1538,7 @@ function makeTRow(item,secId){
   });
   row.appendChild(handle);row.appendChild(check);if(eb)row.appendChild(eb);row.appendChild(nm);
   if(item.qty&&item.qty>=2&&!isP&&tripEditingIdx!==idx){const q=document.createElement('span');q.className='iqty';q.textContent='×'+item.qty;nm.appendChild(q);}
+  if(item.dynamic&&!isP&&tripEditingIdx!==idx){const dz=document.createElement('span');dz.textContent='⚡';dz.style.cssText='font-size:11px;opacity:0.4';dz.title='Scales with trip length';nm.appendChild(dz);}
   row.appendChild(del);
   if(isP&&item.expanded){
     const sl=document.createElement('div');sl.className='sub-list';
@@ -1585,33 +1585,68 @@ function makeTEP(item,idx){
   qPlus.addEventListener('click',e=>{e.stopPropagation();qVal=Math.min(99,qVal+1);qVal_el.textContent=qVal;});
   stepper.appendChild(qMinus);stepper.appendChild(qVal_el);stepper.appendChild(qPlus);
   r1.appendChild(l1);r1.appendChild(ni);r1.appendChild(stepper);
+  // Row 1b: Scales with trip length (only for qty items)
+  let dynVal = item.dynamic ?? !!defaultDynamic[item.name];
+  const r1b = document.createElement('div'); r1b.className='ep-name-row'; r1b.style.cursor='pointer';
+  r1b.addEventListener('click',()=>{if(isP)return;dynVal=!dynVal;dynChk.checked=dynVal;});
+  const l1b = document.createElement('span'); l1b.className='ep-label'; l1b.textContent='Scales with trip length';
+  l1b.style.cssText+=(isP?';opacity:0.4':'') + ';cursor:pointer';
+  const dynChk = document.createElement('input'); dynChk.type='checkbox'; dynChk.checked=dynVal; dynChk.disabled=isP;
+  dynChk.style.cssText='width:16px;height:16px;cursor:pointer;accent-color:var(--color-text-primary);flex-shrink:0';
+  dynChk.addEventListener('click',e=>{e.stopPropagation();dynVal=dynChk.checked;});
+  r1b.appendChild(l1b); r1b.appendChild(dynChk);
   // Row 2: Cancel + Done
   const r2=document.createElement('div');r2.className='ep-bottom-row';
   const gap=document.createElement('div');gap.style.cssText='flex:1';
   const cb=document.createElement('button');cb.className='ep-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{tripEditingIdx=null;renderTripList();});
   const sb=document.createElement('button');sb.className='ep-save';sb.textContent='Done';
   r2.appendChild(gap);r2.appendChild(cb);r2.appendChild(sb);
-  panel.appendChild(r1);panel.appendChild(r2);
+  panel.appendChild(r1);panel.appendChild(r1b);panel.appendChild(r2);
   if(!isP){const asl=document.createElement('button');asl.className='ep-add-sub';asl.innerHTML='<span style="font-size:14px;font-weight:300">+</span> Add sub-items';asl.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const v=ni.value.trim();if(v)item.name=v;item.qty=null;item.children=[];item.expanded=true;tripSubAddOpenIdx=idx;tripEditingIdx=null;renderTripList();});panel.appendChild(asl);}
-  let done=false;function save(){if(done)return;done=true;const v=ni.value.trim();if(v)item.name=v;if(!isP)item.qty=qVal>=1?qVal:null;tripEditingIdx=null;renderTripList();}
+  let done=false;function save(){if(done)return;done=true;const v=ni.value.trim();if(v)item.name=v;
+  if(!isP){item.qty=qVal>=1?qVal:null;item.dynamic=dynVal||false;item.baseQty=dynVal?qVal:undefined;}
+  tripEditingIdx=null;renderTripList();autoSave();}
   sb.addEventListener('click',save);ni.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();save();}else if(e.key==='Escape'){tripEditingIdx=null;renderTripList();}});setTimeout(()=>ni.focus(),30);return panel;
 }
 
 function makeTAR(secId){
   if(tripAddOpenSec===secId){
-    const wrap=document.createElement('div');wrap.className='add-expanded';const ir=document.createElement('div');ir.className='add-input-row';const nn=document.createElement('input');nn.className='add-name-input';nn.placeholder='Item name…';const qw=document.createElement('div');qw.className='add-qty-wrap';const ql=document.createElement('span');ql.className='add-qty-label';ql.textContent='qty';const nq=document.createElement('input');nq.className='add-qty-input';nq.type='number';nq.min='1';nq.max='20';nq.placeholder='—';qw.appendChild(ql);qw.appendChild(nq);ir.appendChild(nn);ir.appendChild(qw);
-    const ar=document.createElement('div');ar.className='add-action-row';const cb=document.createElement('button');cb.className='add-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{
-// If cancelling on a placeholder-only section, remove the section entirely
-const realItems=tripItems.filter(i=>i.sec===secId&&!i._placeholder&&!i._pendingDelete);
-if(realItems.length===0){const phi=tripItems.findIndex(i=>i.sec===secId&&i._placeholder);if(phi>=0)tripItems.splice(phi,1);}
-tripAddOpenSec=null;renderTripList();});const ab=document.createElement('button');ab.className='add-save';ab.textContent='Add';let com=false;function commit(){if(com)return;const v=nn.value.trim();if(!v)return;com=true;const q=parseInt(nq.value);
-// Remove placeholder if present for this section
-const phi=tripItems.findIndex(i=>i.sec===secId&&i._placeholder);if(phi>=0)tripItems.splice(phi,1);
-tripItems.push({sec:secId,name:v,qty:q>=1?q:null,checked:false,children:null,expanded:false});
-// If triggered from the Add button, close. If from Enter, stay open for next item.
-if(fromBtn){tripAddOpenSec=null;renderTripList();}else{com=false;nn.value='';nq.value='';renderTripList();setTimeout(()=>{const inp=document.querySelector(`.add-name-input`);if(inp)inp.focus();},30);}
-autoSave();}
-let fromBtn=false;ab.addEventListener('click',()=>{fromBtn=true;commit();});nn.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();nq.focus();}else if(e.key==='Enter'){e.preventDefault();fromBtn=false;commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});nq.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();fromBtn=false;commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});ar.appendChild(cb);ar.appendChild(ab);wrap.appendChild(ir);wrap.appendChild(ar);setTimeout(()=>nn.focus(),30);return wrap;
+    const wrap=document.createElement('div');wrap.className='add-expanded';
+    const ir=document.createElement('div');ir.className='add-input-row';
+    const nn=document.createElement('input');nn.className='add-name-input';nn.placeholder='Item name…';
+    const qw=document.createElement('div');qw.className='add-qty-wrap';
+    const ql=document.createElement('span');ql.className='add-qty-label';ql.textContent='qty';
+    const nq=document.createElement('input');nq.className='add-qty-input';nq.type='number';nq.min='1';nq.max='20';nq.placeholder='—';
+    qw.appendChild(ql);qw.appendChild(nq);
+    // ⚡ dynamic toggle
+    let dynAdd=false;
+    const dynBtn=document.createElement('button');dynBtn.type='button';dynBtn.title='Scales with trip length';
+    dynBtn.style.cssText='background:none;border:1px solid var(--color-border-secondary);border-radius:6px;padding:0 7px;height:32px;cursor:pointer;font-size:13px;color:var(--color-text-tertiary);flex-shrink:0;line-height:1';
+    dynBtn.textContent='⚡';
+    dynBtn.addEventListener('click',()=>{dynAdd=!dynAdd;dynBtn.style.background=dynAdd?'var(--color-text-primary)':'none';dynBtn.style.color=dynAdd?'var(--color-background-primary)':'var(--color-text-tertiary)';dynBtn.style.borderColor=dynAdd?'var(--color-text-primary)':'var(--color-border-secondary)';});
+    ir.appendChild(nn);ir.appendChild(qw);ir.appendChild(dynBtn);
+    const ar=document.createElement('div');ar.className='add-action-row';
+    const cb=document.createElement('button');cb.className='add-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{
+      const realItems=tripItems.filter(i=>i.sec===secId&&!i._placeholder&&!i._pendingDelete);
+      if(realItems.length===0){const phi=tripItems.findIndex(i=>i.sec===secId&&i._placeholder);if(phi>=0)tripItems.splice(phi,1);}
+      tripAddOpenSec=null;renderTripList();
+    });
+    const ab=document.createElement('button');ab.className='add-save';ab.textContent='Add';
+    let com=false;
+    function commit(){if(com)return;const v=nn.value.trim();if(!v)return;com=true;const q=parseInt(nq.value);
+      const phi=tripItems.findIndex(i=>i.sec===secId&&i._placeholder);if(phi>=0)tripItems.splice(phi,1);
+      const qty=q>=1?q:null;
+      const newItem={sec:secId,name:v,qty:dynAdd&&qty?scaleQ(qty,computedNights):qty,checked:false,children:null,expanded:false};
+      if(dynAdd&&qty){newItem.dynamic=true;newItem.baseQty=qty;}
+      tripItems.push(newItem);
+      if(fromBtn){tripAddOpenSec=null;renderTripList();}else{com=false;nn.value='';nq.value='';dynAdd=false;dynBtn.style.background='none';dynBtn.style.color='var(--color-text-tertiary)';dynBtn.style.borderColor='var(--color-border-secondary)';renderTripList();setTimeout(()=>{const inp=document.querySelector('.add-name-input');if(inp)inp.focus();},30);}
+      autoSave();
+    }
+    let fromBtn=false;
+    ab.addEventListener('click',()=>{fromBtn=true;commit();});
+    nn.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();nq.focus();}else if(e.key==='Enter'){e.preventDefault();fromBtn=false;commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});
+    nq.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();fromBtn=false;commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});
+    ar.appendChild(cb);ar.appendChild(ab);wrap.appendChild(ir);wrap.appendChild(ar);setTimeout(()=>nn.focus(),30);return wrap;
   }else{const trig=document.createElement('div');trig.className='add-trigger';const tic=document.createElement('div');tic.className='add-trigger-icon';tic.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="5" y1="1" x2="5" y2="9"/><line x1="1" y1="5" x2="9" y2="5"/></svg>';const tlb=document.createElement('span');tlb.className='add-trigger-label';tlb.textContent='Add item';trig.appendChild(tic);trig.appendChild(tlb);trig.addEventListener('click',()=>{tripAddOpenSec=secId;tripEditingIdx=null;renderTripList();});return trig;}
 }
 let _addGroupOpen = false;
