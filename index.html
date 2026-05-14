@@ -57,6 +57,11 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .sync-bar.error .sync-dot{background:#f87171}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 
+/* ── UNDO BAR ── */
+.undo-bar{position:fixed;bottom:max(28px,env(safe-area-inset-bottom) + 16px);left:50%;transform:translateX(-50%);background:var(--color-text-primary);color:var(--color-background-primary);border-radius:12px;padding:12px 18px;display:none;align-items:center;gap:18px;font-size:14px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,0.18);z-index:1000;white-space:nowrap;max-width:calc(100vw - 40px)}
+.undo-bar.show{display:flex}
+.undo-btn{background:none;border:none;color:var(--color-background-primary);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);padding:0;opacity:0.9;text-transform:uppercase;letter-spacing:0.07em}
+
 /* ── HOME ── */
 .home-wordmark{font-size:13px;font-weight:900;letter-spacing:0.14em;color:var(--color-text-secondary);text-transform:uppercase;margin-bottom:3rem}
 .home-headline{font-size:30px;font-weight:500;color:var(--color-text-primary);margin-bottom:0.4rem;line-height:1.2}
@@ -337,6 +342,12 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 <div class="sync-bar" id="sync-bar">
   <div class="sync-dot"></div>
   <span id="sync-text">Saving…</span>
+</div>
+
+<!-- UNDO BAR -->
+<div class="undo-bar" id="undo-bar">
+  <span id="undo-msg"></span>
+  <button class="undo-btn" id="undo-btn">Undo</button>
 </div>
 
 <!-- AUTH -->
@@ -647,6 +658,24 @@ function showSync(state, text) {
     syncTimer = setTimeout(() => { bar.className = 'sync-bar'; }, 2500);
   }
 }
+
+// ── UNDO ──
+let _undoTimer = null, _undoFn = null;
+function showUndo(msg, fn) {
+  if (_undoTimer) clearTimeout(_undoTimer);
+  _undoFn = fn;
+  document.getElementById('undo-msg').textContent = msg;
+  document.getElementById('undo-bar').className = 'undo-bar show';
+  _undoTimer = setTimeout(hideUndo, 4000);
+}
+function hideUndo() {
+  if (_undoTimer) { clearTimeout(_undoTimer); _undoTimer = null; }
+  _undoFn = null;
+  document.getElementById('undo-bar').className = 'undo-bar';
+}
+document.getElementById('undo-btn').addEventListener('click', () => {
+  const fn = _undoFn; hideUndo(); if (fn) fn();
+});
 
 // ─────────────────────────────────────────────
 // STATE
@@ -1393,7 +1422,15 @@ function makeTRow(item,secId){
   nm.addEventListener('click',e=>{e.stopPropagation();tripEditingIdx=(tripEditingIdx===idx)?null:idx;renderTripList();});
   const del=document.createElement('button');del.className='del-btn';const tc=document.createElement('canvas');tc.className='tr';del.appendChild(tc);
   del.addEventListener('mouseenter',()=>drawTrash(tc,true));del.addEventListener('mouseleave',()=>drawTrash(tc,false));
-  del.addEventListener('click',e=>{e.stopPropagation();tripItems.splice(idx,1);if(tripEditingIdx===idx)tripEditingIdx=null;else if(tripEditingIdx!==null&&tripEditingIdx>idx)tripEditingIdx--;renderTripList();});
+  del.addEventListener('click',e=>{
+    e.stopPropagation();
+    const saved=JSON.parse(JSON.stringify(item)), savedIdx=idx;
+    tripItems.splice(idx,1);
+    if(tripEditingIdx===idx)tripEditingIdx=null;
+    else if(tripEditingIdx!==null&&tripEditingIdx>idx)tripEditingIdx--;
+    renderTripList(); autoSave();
+    showUndo(`"${saved.name}" removed`, ()=>{ tripItems.splice(savedIdx,0,saved); renderTripList(); autoSave(); });
+  });
   row.appendChild(handle);row.appendChild(check);if(eb)row.appendChild(eb);row.appendChild(nm);
   if(item.qty&&item.qty>=2&&!isP&&tripEditingIdx!==idx){const q=document.createElement('span');q.className='iqty';q.textContent='×'+item.qty;nm.appendChild(q);}
   row.appendChild(del);
@@ -1403,7 +1440,18 @@ function makeTRow(item,secId){
       const sr=document.createElement('div');sr.className='sub-item-row';
       const sc=document.createElement('div');sc.className='icheck-sm'+(ch.checked?' on':'');const sck=document.createElement('canvas');sck.className='ck';sck.style.width='9px';sck.style.height='9px';sck.dataset.state=ch.checked?'full':'empty';sc.appendChild(sck);sc.addEventListener('click',e=>{e.stopPropagation();ch.checked=!ch.checked;renderTripList();autoSave();});
       const sn=document.createElement('span');sn.className='sub-item-name'+(ch.checked?' done':'');sn.textContent=ch.name;
-      const sd2=document.createElement('button');sd2.className='del-btn';const stc=document.createElement('canvas');stc.className='tr';sd2.appendChild(stc);sd2.addEventListener('mouseenter',()=>drawTrash(stc,true));sd2.addEventListener('mouseleave',()=>drawTrash(stc,false));sd2.addEventListener('click',e=>{e.stopPropagation();item.children.splice(ci,1);if(!item.children.length){item.children=null;item.expanded=false;}renderTripList();});
+      const sd2=document.createElement('button');sd2.className='del-btn';const stc=document.createElement('canvas');stc.className='tr';sd2.appendChild(stc);sd2.addEventListener('mouseenter',()=>drawTrash(stc,true));sd2.addEventListener('mouseleave',()=>drawTrash(stc,false));sd2.addEventListener('click',e=>{
+    e.stopPropagation();
+    const savedChild={...item.children[ci]}, savedCi=ci;
+    item.children.splice(ci,1);
+    if(!item.children.length){item.children=null;item.expanded=false;}
+    renderTripList();
+    showUndo(`"${savedChild.name}" removed`, ()=>{
+      if(!item.children)item.children=[];
+      item.children.splice(savedCi,0,savedChild);
+      item.expanded=true; renderTripList();
+    });
+  });
       sr.appendChild(sc);sr.appendChild(sn);sr.appendChild(sd2);sl.appendChild(sr);
     });
     if(tripSubAddOpenIdx===idx){
@@ -2049,18 +2097,30 @@ function renderDefaults() {
         btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;padding:3px 8px;border-radius:4px;flex-shrink:0;color:#c0392b';
         btn.textContent = 'Hide';
         btn.addEventListener('click', () => {
+          const savedOrder = [...order];
           defaultHidden[origName] = true;
-          // Remove from section order so drag indices stay accurate
           defaultSectionOrder[id] = order.filter(e => e.n !== origName);
           saveDefaultPrefs(); renderDefaults();
+          showUndo(`"${displayName}" hidden`, () => {
+            delete defaultHidden[origName];
+            defaultSectionOrder[id] = savedOrder;
+            saveDefaultPrefs(); renderDefaults();
+          });
         });
       } else {
         btn.style.cssText = 'background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;color:#c0392b;padding:3px 8px;border-radius:4px;flex-shrink:0';
         btn.textContent = 'Remove';
         btn.addEventListener('click', () => {
+          const savedOrder = [...order], savedEntry = {...entry};
           defaultExtras[id] = (defaultExtras[id]||[]).filter(n=>n!==origName);
           defaultSectionOrder[id] = order.filter((_,i)=>i!==oi);
           defaultEditingItem = null; saveDefaultPrefs(); renderDefaults();
+          showUndo(`"${displayName}" removed`, () => {
+            if(!defaultExtras[id])defaultExtras[id]=[];
+            if(!defaultExtras[id].includes(origName))defaultExtras[id].push(origName);
+            defaultSectionOrder[id] = savedOrder;
+            saveDefaultPrefs(); renderDefaults();
+          });
         });
       }
 
