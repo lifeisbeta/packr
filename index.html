@@ -49,7 +49,7 @@ body{font-family:var(--font-sans);background:var(--color-background-primary);col
 .screen{display:none}.screen.active{display:block;padding:2rem 0}
 
 /* ── SYNC STATUS ── */
-.sync-bar{position:fixed;top:16px;left:50%;transform:translateX(-50%);font-size:13px;font-weight:500;padding:8px 16px;border-radius:20px;background:var(--color-text-primary);color:var(--color-background-primary);display:none;align-items:center;gap:7px;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.15);white-space:nowrap;transition:opacity 0.3s}
+.sync-bar{position:fixed;bottom:max(80px,env(safe-area-inset-bottom) + 72px);left:50%;transform:translateX(-50%);font-size:13px;font-weight:500;padding:8px 16px;border-radius:20px;background:var(--color-text-primary);color:var(--color-background-primary);display:none;align-items:center;gap:7px;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.15);white-space:nowrap;transition:opacity 0.3s}
 .sync-bar.show{display:flex}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.5);flex-shrink:0}
 .sync-bar.syncing .sync-dot{background:#f59e0b;animation:pulse 1s infinite}
@@ -655,7 +655,7 @@ function showSync(state, text) {
   txt.textContent = text;
   if (syncTimer) clearTimeout(syncTimer);
   if (state === 'saved' || state === 'error') {
-    syncTimer = setTimeout(() => { bar.className = 'sync-bar'; }, 2500);
+    syncTimer = setTimeout(() => { bar.className = 'sync-bar'; }, 7000);
   }
 }
 
@@ -1017,7 +1017,7 @@ async function saveTrip(btn) {
   const tripData = {
     mode: 'trip',
     savedDate: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-    items: tripItems, transport, addons, nights: computedNights,
+    items: tripItems.filter(i=>!i._pendingDelete), transport, addons, nights: computedNights,
     depart: document.getElementById('f-depart').value,
     returnDate: document.getElementById('f-return').value,
     destination: document.getElementById('f-dest').value.trim(),
@@ -1336,7 +1336,7 @@ function onBuildOrUpdate(){if(currentTripId){updateTripDetails();}else{buildTrip
 
 const LMAP_BASE={wear:'Wear on travel day',toi:'Toiletries',tops:'Tops',bot:'Bottoms',socks:'Socks',shoes:'Shoes',out:'Outerwear',elec:'Electronics',misc:'Miscellaneous'};
 function lmap(id){return LMAP_BASE[id]||(addonDefs.find(a=>a.id===id)?.name)||id;}
-function secTot(secId){return tripItems.filter(i=>i.sec===secId).reduce((s,i)=>{const k=i.children&&i.children.length>0;return s+(k?i.children.length:(i.qty&&i.qty>=1?i.qty:1));},0);}
+function secTot(secId){return tripItems.filter(i=>i.sec===secId&&!i._pendingDelete).reduce((s,i)=>{const k=i.children&&i.children.length>0;return s+(k?i.children.length:(i.qty&&i.qty>=1?i.qty:1));},0);}
 function childSt(item){if(!item.children||!item.children.length)return null;const t=item.children.length,c=item.children.filter(ch=>ch.checked).length;if(c===0)return 'empty';if(c===t)return 'full';return 'partial';}
 
 function renderTripList(){
@@ -1348,7 +1348,16 @@ function renderTripList(){
     const hd=document.createElement('div');hd.className='sec-head'+(secId==='wear'?' wear-head':'');
     hd.innerHTML=`<span class="sec-name">${lmap(secId)}</span><span class="sec-count">${secTot(secId)}</span>`;
     sd.appendChild(hd);
-    si.forEach(item=>{const idx=tripItems.indexOf(item);const row=makeTRow(item,secId);sd.appendChild(row);if(tripEditingIdx===idx)sd.appendChild(makeTEP(item,idx));if(row._sl)sd.appendChild(row._sl);});
+    si.forEach(item=>{
+      if(item._pendingDelete){
+        const ur=document.createElement('div');ur.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:0.5px solid var(--color-border-tertiary)';
+        const msg=document.createElement('span');msg.style.cssText='flex:1;font-size:14px;color:var(--color-text-tertiary);font-style:italic';msg.textContent=`"${item.name}" deleted`;
+        const ub=document.createElement('button');ub.style.cssText='background:none;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);color:var(--color-text-secondary);padding:0;text-transform:uppercase;letter-spacing:0.06em';ub.textContent='Undo';
+        ub.addEventListener('click',()=>{clearTimeout(item._deleteTimer);delete item._pendingDelete;delete item._deleteTimer;renderTripList();updateTP();});
+        ur.appendChild(msg);ur.appendChild(ub);sd.appendChild(ur);return;
+      }
+      const idx=tripItems.indexOf(item);const row=makeTRow(item,secId);sd.appendChild(row);if(tripEditingIdx===idx)sd.appendChild(makeTEP(item,idx));if(row._sl)sd.appendChild(row._sl);
+    });
     sd.appendChild(makeTAR(secId));body.appendChild(sd);
   });
   requestAnimationFrame(()=>{
@@ -1424,12 +1433,14 @@ function makeTRow(item,secId){
   del.addEventListener('mouseenter',()=>drawTrash(tc,true));del.addEventListener('mouseleave',()=>drawTrash(tc,false));
   del.addEventListener('click',e=>{
     e.stopPropagation();
-    const saved=JSON.parse(JSON.stringify(item)), savedIdx=idx;
-    tripItems.splice(idx,1);
     if(tripEditingIdx===idx)tripEditingIdx=null;
     else if(tripEditingIdx!==null&&tripEditingIdx>idx)tripEditingIdx--;
-    renderTripList(); autoSave();
-    showUndo(`"${saved.name}" removed`, ()=>{ tripItems.splice(savedIdx,0,saved); renderTripList(); autoSave(); });
+    item._pendingDelete=true;
+    renderTripList();updateTP();
+    item._deleteTimer=setTimeout(()=>{
+      const i=tripItems.indexOf(item);if(i>=0)tripItems.splice(i,1);
+      renderTripList();updateTP();autoSave();
+    },4000);
   });
   row.appendChild(handle);row.appendChild(check);if(eb)row.appendChild(eb);row.appendChild(nm);
   if(item.qty&&item.qty>=2&&!isP&&tripEditingIdx!==idx){const q=document.createElement('span');q.className='iqty';q.textContent='×'+item.qty;nm.appendChild(q);}
@@ -1456,7 +1467,7 @@ function makeTRow(item,secId){
     });
     if(tripSubAddOpenIdx===idx){
       const exp=document.createElement('div');exp.className='sub-add-expanded';const ir=document.createElement('div');ir.style.cssText='display:flex;align-items:center;gap:8px';const inp=document.createElement('input');inp.className='sub-add-input';inp.placeholder='Sub-item name…';inp.dataset.idx=idx;ir.appendChild(inp);
-      const act=document.createElement('div');act.className='sub-add-actions';const cb=document.createElement('button');cb.className='sub-add-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{tripSubAddOpenIdx=null;renderTripList();});const ab=document.createElement('button');ab.className='sub-add-save';ab.textContent='Add';let com=false;function commit(){if(com)return;const v=inp.value.trim();if(!v)return;com=true;if(!item.children)item.children=[];item.children.push({name:v,checked:false});tripSubAddOpenIdx=null;renderTripList();}ab.addEventListener('click',commit);inp.addEventListener('keydown',e=>{if(e.key==='Enter')commit();if(e.key==='Escape'){tripSubAddOpenIdx=null;renderTripList();}});act.appendChild(cb);act.appendChild(ab);exp.appendChild(ir);exp.appendChild(act);sl.appendChild(exp);setTimeout(()=>inp.focus(),30);
+      const act=document.createElement('div');act.className='sub-add-actions';const cb=document.createElement('button');cb.className='sub-add-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{tripSubAddOpenIdx=null;renderTripList();});const ab=document.createElement('button');ab.className='sub-add-save';ab.textContent='Add';let com=false;function commit(){if(com)return;const v=inp.value.trim();if(!v)return;com=true;if(!item.children)item.children=[];item.children.push({name:v,checked:false});tripSubAddOpenIdx=null;renderTripList();autoSave();}ab.addEventListener('click',commit);inp.addEventListener('keydown',e=>{if(e.key==='Enter')commit();if(e.key==='Escape'){tripSubAddOpenIdx=null;renderTripList();}});act.appendChild(cb);act.appendChild(ab);exp.appendChild(ir);exp.appendChild(act);sl.appendChild(exp);setTimeout(()=>inp.focus(),30);
     }else{const trig=document.createElement('div');trig.className='sub-add-trigger';const tic=document.createElement('div');tic.className='sub-add-trigger-icon';tic.textContent='+';const tlb=document.createElement('span');tlb.className='sub-add-trigger-label';tlb.textContent='Add sub-item';trig.appendChild(tic);trig.appendChild(tlb);trig.addEventListener('click',()=>{tripSubAddOpenIdx=idx;renderTripList();});sl.appendChild(trig);}
     row._sl=sl;
   }
@@ -1494,10 +1505,10 @@ function makeTEP(item,idx){
 function makeTAR(secId){
   if(tripAddOpenSec===secId){
     const wrap=document.createElement('div');wrap.className='add-expanded';const ir=document.createElement('div');ir.className='add-input-row';const nn=document.createElement('input');nn.className='add-name-input';nn.placeholder='Item name…';const qw=document.createElement('div');qw.className='add-qty-wrap';const ql=document.createElement('span');ql.className='add-qty-label';ql.textContent='qty';const nq=document.createElement('input');nq.className='add-qty-input';nq.type='number';nq.min='1';nq.max='20';nq.placeholder='—';qw.appendChild(ql);qw.appendChild(nq);ir.appendChild(nn);ir.appendChild(qw);
-    const ar=document.createElement('div');ar.className='add-action-row';const cb=document.createElement('button');cb.className='add-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{tripAddOpenSec=null;renderTripList();});const ab=document.createElement('button');ab.className='add-save';ab.textContent='Add';let com=false;function commit(){if(com)return;const v=nn.value.trim();if(!v)return;com=true;const q=parseInt(nq.value);tripItems.push({sec:secId,name:v,qty:q>=1?q:null,checked:false,children:null,expanded:false});tripAddOpenSec=null;renderTripList();}ab.addEventListener('click',commit);nn.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();nq.focus();}else if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});nq.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});ar.appendChild(cb);ar.appendChild(ab);wrap.appendChild(ir);wrap.appendChild(ar);setTimeout(()=>nn.focus(),30);return wrap;
+    const ar=document.createElement('div');ar.className='add-action-row';const cb=document.createElement('button');cb.className='add-cancel';cb.textContent='Cancel';cb.addEventListener('click',()=>{tripAddOpenSec=null;renderTripList();});const ab=document.createElement('button');ab.className='add-save';ab.textContent='Add';let com=false;function commit(){if(com)return;const v=nn.value.trim();if(!v)return;com=true;const q=parseInt(nq.value);tripItems.push({sec:secId,name:v,qty:q>=1?q:null,checked:false,children:null,expanded:false});tripAddOpenSec=null;renderTripList();autoSave();}ab.addEventListener('click',commit);nn.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();nq.focus();}else if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});nq.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){tripAddOpenSec=null;renderTripList();}});ar.appendChild(cb);ar.appendChild(ab);wrap.appendChild(ir);wrap.appendChild(ar);setTimeout(()=>nn.focus(),30);return wrap;
   }else{const trig=document.createElement('div');trig.className='add-trigger';const tic=document.createElement('div');tic.className='add-trigger-icon';tic.textContent='+';const tlb=document.createElement('span');tlb.className='add-trigger-label';tlb.textContent='Add item';trig.appendChild(tic);trig.appendChild(tlb);trig.addEventListener('click',()=>{tripAddOpenSec=secId;tripEditingIdx=null;renderTripList();});return trig;}
 }
-function updateTP(){let total=0,done=0;tripItems.forEach(item=>{if(item.children&&item.children.length>0){total+=item.children.length;done+=item.children.filter(c=>c.checked).length;}else{total++;if(item.checked)done++;}});const pct=total>0?Math.round((done/total)*100):0;document.getElementById('p-fill').style.width=pct+'%';document.getElementById('p-text').textContent=done+' of '+total+' items packed';}
+function updateTP(){let total=0,done=0;tripItems.filter(i=>!i._pendingDelete).forEach(item=>{if(item.children&&item.children.length>0){total+=item.children.length;done+=item.children.filter(c=>c.checked).length;}else{total++;if(item.checked)done++;}});const pct=total>0?Math.round((done/total)*100):0;document.getElementById('p-fill').style.width=pct+'%';document.getElementById('p-text').textContent=done+' of '+total+' items packed';}
 
 // ─────────────────────────────────────────────
 // LOADOUT
